@@ -188,6 +188,13 @@
     background:rgba(31,34,51,.94);color:#fff;padding:10px 16px;border-radius:12px;font-size:13.5px;
     box-shadow:0 10px 30px rgba(0,0,0,.22);text-align:center;animation:pop .16s ease-out;
   }
+
+  /* 弹窗 */
+  .modal{position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(18,20,28,.42);backdrop-filter:blur(2px)}
+  .modal-card{width:min(360px,100%);background:var(--card);border:1px solid var(--line);border-radius:18px;padding:20px;box-shadow:0 24px 60px rgba(0,0,0,.3)}
+  .modal-card h3{margin:0 0 12px;font-size:16px}
+  .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+  .modal-actions .primary{width:auto;height:38px;margin:0;padding:0 18px;font-size:14px;box-shadow:none}
   .sys{align-self:center;font-size:12px;color:#9aa0b6;background:#f4f4fb;padding:5px 12px;border-radius:999px;margin:8px 0}
 
   @media (max-width:700px){
@@ -309,6 +316,7 @@
       <button type="button" class="menu-item" id="miniItem" role="menuitemcheckbox" aria-checked="false">
         <span>迷你窗口</span><i class="switch"></i>
       </button>
+      <button type="button" class="menu-item" id="renameItem" role="menuitem"><span>修改昵称</span></button>
       <button type="button" class="menu-item danger" id="clearBtn" role="menuitem">清空本机记录</button>
       <div class="menu-note" id="menuNote">版本</div>
     </div>
@@ -341,6 +349,17 @@
 </div>
 
 <div class="toast is-hidden" id="toast"></div>
+
+<div class="modal is-hidden" id="renameModal">
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="renameTitle">
+    <h3 id="renameTitle">修改昵称</h3>
+    <input type="text" id="renameInput" maxlength="12" placeholder="新的昵称" autocomplete="off">
+    <div class="modal-actions">
+      <button type="button" class="ghost" id="renameCancel">取消</button>
+      <button type="button" class="primary" id="renameOk">保存</button>
+    </div>
+  </div>
+</div>
 <noscript><p style="text-align:center;padding:20px">这个网页需要浏览器启用 JavaScript 才能使用。</p></noscript>
 
 <script>
@@ -1266,7 +1285,7 @@
     text = String(text == null ? '' : text).replace(/^\s+|\s+$/g, '').slice(0, MAX_LEN);
     if (!text) return Promise.resolve(false);
 
-    var env = { v: 1, id: uid(), n: S.nick, t: text, ts: Date.now() };
+    var env = { v: 1, id: uid(), n: S.nick, t: text, ts: Date.now(), me: 1 };
     if (S.quote && S.quote.id) env.q = { id: S.quote.id, n: S.quote.n, t: S.quote.t };
     S.seen[env.id] = 1;
 
@@ -1409,7 +1428,9 @@
 
       return loadHist();
     }).then(function () {
-      for (var i = 0; i < S.hist.length; i++) renderMessage(S.hist[i], S.hist[i].n === S.nick, false);
+      for (var i = 0; i < S.hist.length; i++) {
+        renderMessage(S.hist[i], S.hist[i].me === 1 || S.hist[i].n === S.nick, false);
+      }
       if (S.hist.length) {
         addSystem('以上是这台电脑上保存的历史消息');
         scrollDown();
@@ -1451,6 +1472,34 @@
     updateTitle();
     renderMini();
     updateJump();
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* 修改昵称                                                           */
+  /* ------------------------------------------------------------------ */
+
+  function openRename() {
+    if (!S.entered) return;
+    $('renameInput').value = S.nick;
+    $('renameModal').classList.remove('is-hidden');
+    setTimeout(function () {
+      var el = $('renameInput');
+      try { el.focus(); el.select(); } catch (e) { /* ignore */ }
+    }, 30);
+  }
+
+  function closeRename() {
+    $('renameModal').classList.add('is-hidden');
+  }
+
+  function saveRename() {
+    var v = $('renameInput').value.replace(/^\s+|\s+$/g, '').slice(0, 12);
+    if (!v) { toast('昵称不能为空'); return; }
+    S.nick = v;
+    if ($('nickInput')) $('nickInput').value = v;
+    try { localStorage.setItem('ql.nick', v); } catch (e) { /* ignore */ }
+    closeRename();
+    toast('昵称已改为「' + v + '」');
   }
 
   /* ------------------------------------------------------------------ */
@@ -1652,6 +1701,19 @@
 
     if ($('menuNote')) $('menuNote').textContent = '版本 ' + VERSION + ' · 已读/输入已启用';
 
+    $('renameItem').addEventListener('click', function () {
+      hideMenu();
+      openRename();
+    });
+    $('renameCancel').addEventListener('click', closeRename);
+    $('renameOk').addEventListener('click', saveRename);
+    $('renameInput').addEventListener('keydown', function (ev) {
+      if (ev.key === 'Enter' && !ev.isComposing) { ev.preventDefault(); saveRename(); }
+    });
+    $('renameModal').addEventListener('click', function (ev) {
+      if (ev.target === $('renameModal')) closeRename();
+    });
+
     $('clearBtn').addEventListener('click', function () {
       if (!window.confirm('清空这台电脑上保存的聊天记录？\n（对方那边不受影响，清空后无法恢复）')) return;
       clearHist();
@@ -1676,6 +1738,7 @@
     document.addEventListener('keydown', function (ev) {
       if (ev.key === 'Escape') {
         hideMenu();
+        closeRename();
         if (S.quote) clearQuote();
       }
     });
