@@ -173,6 +173,7 @@
   .switch::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:.15s}
   .menu-item[aria-checked=true] .switch{background:var(--accent)}
   .menu-item[aria-checked=true] .switch::after{left:16px}
+  .menu-note{padding:7px 10px 3px;margin-top:4px;border-top:1px solid var(--line);font-size:11px;color:#a3a9bd}
   #msgInput{
     flex:1;resize:none;max-height:132px;min-height:46px;border:1px solid var(--line);background:#f8f8fd;
     border-radius:16px;padding:12px 14px;font:inherit;font-size:16px;line-height:1.45;color:var(--ink);
@@ -309,6 +310,7 @@
         <span>迷你窗口</span><i class="switch"></i>
       </button>
       <button type="button" class="menu-item danger" id="clearBtn" role="menuitem">清空本机记录</button>
+      <div class="menu-note" id="menuNote">版本</div>
     </div>
 
     <div class="logwrap">
@@ -345,7 +347,7 @@
 (function () {
   'use strict';
 
-  var VERSION = '1.0.0';
+  var VERSION = '2.0.0';
   var BASE = 'https://ntfy.sh';        // 消息中转（无需注册的公共服务）
   var MAX_LEN = 800;
   var HIST_MAX = 300;
@@ -506,6 +508,7 @@
     retry: 0,
     unread: 0,
     pending: 0,
+    clientId: '',
     connected: false,
     statusKind: 'connecting',
     statusText: '连接中…',
@@ -520,6 +523,8 @@
     lastTs: 0,
     entered: false
   };
+
+  S.clientId = uid();     // 本页面的身份，用来忽略自己消息的回声
 
   // 本地偏好：消息提醒 / 提示音
   var P = { notify: false, sound: false };
@@ -586,10 +591,11 @@
   function setStatus(kind, text) {
     S.statusKind = kind;
     S.statusText = text;
+    S.connected = kind === 'online';
+    if (S.peerTyping && kind === 'online') return;   // 别把「正在输入」刷掉
     var dot = $('dot');
     dot.className = 'dot ' + kind;
     $('statText').textContent = text;
-    S.connected = kind === 'online';
   }
 
   /* ------------------------------------------------------------------ */
@@ -598,8 +604,13 @@
 
   function sendControl(payload) {
     if (!S.entered) return;
+    payload.v = 1;
+    payload.c = S.clientId;      // 用来忽略自己的回声
+    payload.at = Date.now();     // 控制消息自身的发送时间（用于丢弃过期的补收）
+    payload.id = payload.id || uid();
+    S.seen[payload.id] = 1;
     seal(S.key, payload).then(function (body) {
-      return fetch(BASE + '/' + encodeURIComponent(S.topic) + '?cache=no', {
+      return fetch(BASE + '/' + encodeURIComponent(S.topic), {
         method: 'POST',
         body: body,
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -611,15 +622,12 @@
   function maybeSendTyping() {
     if (!S.entered) return;
     var now = Date.now();
-    if (now - S.lastTypingSent < 3000) return;
+    if (now - S.lastTypingSent < 2000) return;
     S.lastTypingSent = now;
-    sendControl({ v: 1, k: 't' });
+    sendControl({ k: 't' });
   }
 
   function showPeerTyping() {
-    if (S.peerTyping) {
-      clearTimeout(S.typingTimer);
-    }
     S.peerTyping = true;
     var dot = $('dot');
     dot.className = 'dot connecting';
@@ -628,7 +636,7 @@
     S.typingTimer = setTimeout(function () {
       S.peerTyping = false;
       setStatus(S.statusKind, S.statusText);
-    }, 3500);
+    }, 5000);
   }
 
   function hidePeerTyping() {
@@ -647,7 +655,7 @@
     }
   }
 
-  // 只在「我确实看到」时才回已读，且 1 秒内合并
+  // 只在「我确实看到」时才回已读，短时间内合并
   function scheduleRead(ts) {
     S.lastIncomingTs = Math.max(S.lastIncomingTs, Number(ts) || 0);
     S.pendingReadTs = Math.max(S.pendingReadTs, Number(ts) || 0);
@@ -656,8 +664,8 @@
       S.readTimer = null;
       var t = S.pendingReadTs;
       S.pendingReadTs = 0;
-      if (t) sendControl({ v: 1, k: 'r', ts: t });
-    }, 1000);
+      if (t) sendControl({ k: 'r', ts: t });
+    }, 400);
   }
 
   // 窗口重新可见 / 获得焦点时，把期间收到的消息补一个已读
@@ -666,7 +674,8 @@
     if (S.lastIncomingTs) scheduleRead(S.lastIncomingTs);
   }
 
-  function refreshOwnStatus() {    var logEl = $('log');
+  function refreshOwnStatus() {
+    var logEl = $('log');
     var old = logEl.querySelectorAll('.status');
     for (var i = 0; i < old.length; i++) old[i].parentNode.removeChild(old[i]);
     var owns = logEl.querySelectorAll('.msg.own');
@@ -933,8 +942,13 @@
     }
 
     return unseal(S.key, raw.message).then(function (env) {
-      if (env && env.k === 't') { showPeerTyping(); return; }     // 对方正在输入
-      if (env && env.k === 'r') { onPeerRead(env.ts); return; }   // 对方已读
+      if (env && env.k) {
+        if (env.c && env.c === S.clientId) return;                    // 自己发的回声
+        if (Date.now() - (Number(env.at) || 0) > 20000) return;       // 补收回来的旧控制消息，丢掉
+        if (env.k === 't') { showPeerTyping(); return; }              // 对方正在输入
+        if (env.k === 'r') { onPeerRead(env.ts); return; }            // 对方已读
+        return;
+      }
       if (!env || typeof env.t !== 'string' || !env.t) return;
       if (env.id && S.seen[env.id]) return;
       if (env.id) S.seen[env.id] = 1;
@@ -1635,6 +1649,8 @@
       toggleMini();
     });
     $('miniItem').setAttribute('aria-checked', (pipWin && !pipWin.closed) ? 'true' : 'false');
+
+    if ($('menuNote')) $('menuNote').textContent = '版本 ' + VERSION + ' · 已读/输入已启用';
 
     $('clearBtn').addEventListener('click', function () {
       if (!window.confirm('清空这台电脑上保存的聊天记录？\n（对方那边不受影响，清空后无法恢复）')) return;
