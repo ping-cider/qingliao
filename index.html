@@ -182,6 +182,16 @@
   #msgInput:focus{background:#fff;border-color:#c7c7f5;box-shadow:0 0 0 4px rgba(91,91,214,.10)}
   #msgInput::placeholder{color:#b3b7c9}
   .send{width:auto;height:46px;margin:0;padding:0 20px;flex:none}
+  .attach{
+    width:46px;height:46px;flex:none;border-radius:14px;background:#f1f1fa;color:#5b6076;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .attach:hover{background:#e5e5f6;color:#3f3f6e}
+  .bubble-img{padding:4px;background:#f1f1fa!important;border:1px solid var(--line)!important;box-shadow:none!important}
+  .msg.own .bubble-img{background:#f1f1fa!important}
+  .img{display:block;max-width:100%;max-height:300px;border-radius:12px;cursor:zoom-in}
+  .imghint{font-size:12.5px;color:#8b90a6;padding:10px 12px;text-align:center;min-width:120px}
+  .imghint.bad{color:#e05a5a}
 
   .toast{
     position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:60;max-width:86vw;
@@ -248,6 +258,9 @@
     .ghost:hover{background:#242a3a;color:#fff}
     .tool{background:#252b3b;color:#b9c0d4}
     .tool:hover{background:#2f3648;color:#fff}
+    .attach{background:#252b3b;color:#b9c0d4}
+    .attach:hover{background:#2f3648;color:#fff}
+    .bubble-img,.msg.own .bubble-img{background:#252b3b!important;border-color:#2a3042!important}
     .msg.other .quote{border-left-color:#4a5270}
     .quotebar{background:#1a1f2c;border-top-color:var(--line)}
     .quotebar .qb-main{border-left-color:#5b5bd6}
@@ -343,8 +356,16 @@
     <footer class="composer">
       <span class="counter is-hidden" id="counter"></span>
       <textarea id="msgInput" rows="1" maxlength="800" enterkeyhint="send" autocapitalize="off" placeholder="输入消息，Enter 发送，Shift + Enter 换行"></textarea>
+      <button type="button" class="attach" id="imgBtn" title="发送图片（也可以直接 Ctrl+V 粘贴截图）" aria-label="发送图片">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4" width="18" height="16" rx="3"/>
+          <circle cx="8.5" cy="9.5" r="1.6"/>
+          <path d="M21 16l-5-5-6 6-2-2-5 5"/>
+        </svg>
+      </button>
       <button type="button" class="primary send" id="sendBtn">发送</button>
     </footer>
+    <input type="file" id="fileInput" accept="image/*" multiple class="is-hidden">
   </section>
 </div>
 
@@ -366,7 +387,7 @@
 (function () {
   'use strict';
 
-  var VERSION = '2.0.0';
+  var VERSION = '2.1.0';
   var BASE = 'https://ntfy.sh';        // 消息中转（无需注册的公共服务）
   var MAX_LEN = 800;
   var HIST_MAX = 300;
@@ -596,7 +617,7 @@
     try {
       if (!('Notification' in window) || Notification.permission !== 'granted') return;
       var n = new Notification(String(msg.n || '对方') + ' · 轻聊', {
-        body: String(msg.t).slice(0, 120),
+        body: msg.k === 'img' ? '[图片]' : String(msg.t).slice(0, 120),
         tag: msg.id,
         silent: true
       });
@@ -844,6 +865,58 @@
     var bubble = document.createElement('div');
     bubble.className = 'bubble';
 
+    if (msg.k === 'img') {
+      bubble.classList.add('bubble-img');
+      var img = document.createElement('img');
+      img.className = 'img';
+      img.alt = '图片';
+      img.addEventListener('click', function (ev) {
+        ev.stopPropagation();
+        try { window.open(img.src, '_blank'); } catch (e) { /* ignore */ }
+      });
+      bubble.appendChild(img);
+      if (msg.local) {
+        img.src = msg.local;
+      } else {
+        loadImageInto(msg, img, bubble);
+      }
+      wrap.appendChild(bubble);
+      // 图片不提供「复制文字」
+      var imgMeta = document.createElement('span');
+      imgMeta.className = 'meta';
+      imgMeta.textContent = fmtTime(msg.ts);
+      var imgFoot = document.createElement('div');
+      imgFoot.className = 'foot';
+      imgFoot.appendChild(imgMeta);
+      var imgTools = document.createElement('div');
+      imgTools.className = 'tools';
+      var qb = document.createElement('button');
+      qb.type = 'button';
+      qb.className = 'tool';
+      qb.textContent = '引用';
+      qb.addEventListener('click', function (ev) {
+        ev.stopPropagation();
+        startQuote(msg);
+        wrap.classList.remove('show-tools');
+      });
+      imgTools.appendChild(qb);
+      imgFoot.appendChild(imgTools);
+      wrap.appendChild(imgFoot);
+
+      bubble.addEventListener('click', function (ev) {
+        ev.stopPropagation();
+        var open = $('log').querySelector('.msg.show-tools');
+        if (open && open !== wrap) open.classList.remove('show-tools');
+        wrap.classList.toggle('show-tools');
+      });
+
+      $('log').appendChild(wrap);
+      S.lastSender = own ? '' : (msg.n || '对方');
+      S.lastTs = msg.ts || Date.now();
+      if (own) refreshOwnStatus();
+      return;
+    }
+
     // 引用块
     if (msg.q && msg.q.id) {
       var quoted = document.createElement('div');
@@ -925,9 +998,10 @@
 
   function startQuote(msg) {
     if (!msg || !msg.id) return;
-    S.quote = { id: msg.id, n: String(msg.n || '对方').slice(0, 24), t: String(msg.t).slice(0, 80) };
+    var label = msg.k === 'img' ? '[图片]' : String(msg.t || '');
+    S.quote = { id: msg.id, n: String(msg.n || '对方').slice(0, 24), t: label.slice(0, 80) };
     $('qbName').textContent = (msg.n || '对方') + '：';
-    $('qbText').textContent = String(msg.t).slice(0, 80);
+    $('qbText').textContent = label.slice(0, 80);
     $('quoteBar').classList.remove('is-hidden');
     $('msgInput').focus();
     scrollDown(true);
@@ -953,7 +1027,9 @@
   function handleRaw(text) {
     var raw;
     try { raw = JSON.parse(text); } catch (e) { return; }
-    if (!raw || raw.event !== 'message' || typeof raw.message !== 'string') return;
+    if (!raw || raw.event !== 'message') return;
+    if (raw.attachment) return;                 // 图片原始上传产生的那条消息，忽略
+    if (typeof raw.message !== 'string' || !raw.message) return;
     if (raw.id && S.seen[raw.id]) return;
     if (raw.id) {
       S.seen[raw.id] = 1;
@@ -961,23 +1037,38 @@
     }
 
     return unseal(S.key, raw.message).then(function (env) {
-      if (env && env.k) {
+      if (env && (env.k === 't' || env.k === 'r')) {
         if (env.c && env.c === S.clientId) return;                    // 自己发的回声
         if (Date.now() - (Number(env.at) || 0) > 20000) return;       // 补收回来的旧控制消息，丢掉
         if (env.k === 't') { showPeerTyping(); return; }              // 对方正在输入
         if (env.k === 'r') { onPeerRead(env.ts); return; }            // 对方已读
         return;
       }
-      if (!env || typeof env.t !== 'string' || !env.t) return;
+      if (!env || (!env.t && env.k !== 'img')) return;
       if (env.id && S.seen[env.id]) return;
       if (env.id) S.seen[env.id] = 1;
 
-      var msg = {
-        id: env.id || raw.id || uid(),
-        n: String(env.n || '对方').slice(0, 24),
-        t: String(env.t).slice(0, MAX_LEN),
-        ts: Number(env.ts) || (raw.time ? raw.time * 1000 : Date.now())
-      };
+      var msg;
+      if (env.k === 'img') {
+        if (!env.u || !env.iv) return;
+        msg = {
+          id: env.id || raw.id || uid(),
+          n: String(env.n || '对方').slice(0, 24),
+          ts: Number(env.ts) || (raw.time ? raw.time * 1000 : Date.now()),
+          k: 'img',
+          u: String(env.u),
+          iv: String(env.iv),
+          w: Number(env.w) || 0,
+          h: Number(env.h) || 0
+        };
+      } else {
+        msg = {
+          id: env.id || raw.id || uid(),
+          n: String(env.n || '对方').slice(0, 24),
+          t: String(env.t).slice(0, MAX_LEN),
+          ts: Number(env.ts) || (raw.time ? raw.time * 1000 : Date.now())
+        };
+      }
       if (env.q && env.q.id) {
         msg.q = {
           id: String(env.q.id).slice(0, 64),
@@ -1273,6 +1364,144 @@
     return fetch(BASE + '/' + encodeURIComponent(S.topic), opts).then(function (res) {
       if (!res.ok) throw new Error('HTTP ' + res.status);
       return true;
+    });
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* 图片：压缩 → 加密 → 传到中转附件 → 消息里只带链接                     */
+  /* ------------------------------------------------------------------ */
+
+  var IMG_MAX_SIDE = 1600;
+  var IMG_QUALITY = 0.85;
+
+  function compressImage(file) {
+    return new Promise(function (resolve, reject) {
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onload = function () {
+        try {
+          var w = img.naturalWidth || img.width;
+          var h = img.naturalHeight || img.height;
+          if (!w || !h) throw new Error('图片尺寸异常');
+          var scale = Math.min(1, IMG_MAX_SIDE / Math.max(w, h));
+          var cw = Math.max(1, Math.round(w * scale));
+          var ch = Math.max(1, Math.round(h * scale));
+          var c = document.createElement('canvas');
+          c.width = cw;
+          c.height = ch;
+          var x = c.getContext('2d');
+          x.fillStyle = '#ffffff';
+          x.fillRect(0, 0, cw, ch);
+          x.drawImage(img, 0, 0, cw, ch);
+          URL.revokeObjectURL(url);
+          c.toBlob(function (blob) {
+            if (!blob) { reject(new Error('压缩失败')); return; }
+            resolve({ blob: blob, w: cw, h: ch });
+          }, 'image/jpeg', IMG_QUALITY);
+        } catch (e) {
+          URL.revokeObjectURL(url);
+          reject(e);
+        }
+      };
+      img.onerror = function () {
+        URL.revokeObjectURL(url);
+        reject(new Error('不是有效的图片文件'));
+      };
+      img.src = url;
+    });
+  }
+
+  function encryptBytes(buf) {
+    var iv = window.crypto.getRandomValues(new Uint8Array(12));
+    return window.crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, S.key, buf).then(function (ct) {
+      return { data: new Uint8Array(ct), iv: toB64(iv) };
+    });
+  }
+
+  function uploadAttachment(bytes) {
+    // 图片传到单独的 -f 主题，避免在聊天流里插一条“附件消息”
+    return fetch(BASE + '/' + encodeURIComponent(S.topic + '-f'), {
+      method: 'POST',
+      body: bytes,
+      headers: {
+        'Filename': uid() + '.bin',
+        'Content-Type': 'application/octet-stream'
+      },
+      cache: 'no-store'
+    }).then(function (res) {
+      if (!res.ok) throw new Error('上传失败 HTTP ' + res.status);
+      return res.json();
+    }).then(function (json) {
+      if (!json || !json.attachment || !json.attachment.url) throw new Error('中转没有返回图片地址');
+      return json.attachment.url;
+    });
+  }
+
+  function loadImageInto(msg, img, bubble) {
+    var hint = document.createElement('div');
+    hint.className = 'imghint';
+    hint.textContent = '图片加载中…';
+    bubble.appendChild(hint);
+
+    fetch(msg.u, { cache: 'force-cache' })
+      .then(function (res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.arrayBuffer();
+      })
+      .then(function (buf) {
+        return window.crypto.subtle.decrypt({ name: 'AES-GCM', iv: fromB64(msg.iv) }, S.key, buf);
+      })
+      .then(function (pt) {
+        var blob = new Blob([pt], { type: 'image/jpeg' });
+        img.src = URL.createObjectURL(blob);
+        if (hint.parentNode) hint.parentNode.removeChild(hint);
+      })
+      .catch(function () {
+        hint.textContent = '图片已过期或加载失败';
+        hint.classList.add('bad');
+      });
+  }
+
+  function sendImage(file) {
+    if (!S.entered) return Promise.resolve(false);
+    if (!file || !/^image\//.test(file.type || '')) { toast('这个文件不是图片'); return Promise.resolve(false); }
+    if (!window.crypto || !window.crypto.subtle || !S.key) {
+      toast('当前浏览器环境不支持加密，不能发图片');
+      return Promise.resolve(false);
+    }
+    if (file.size > 15 * 1024 * 1024) { toast('图片太大了（上限 15MB）'); return Promise.resolve(false); }
+
+    var localUrl = null;
+    toast('正在处理图片…');
+
+    return compressImage(file).then(function (res) {
+      if (res.blob.size > 8 * 1024 * 1024) throw new Error('压缩后仍然太大');
+      return res.blob.arrayBuffer().then(function (buf) {
+        return encryptBytes(buf).then(function (enc) {
+          return uploadAttachment(enc.data).then(function (url) {
+            return { url: url, iv: enc.iv, w: res.w, h: res.h };
+          });
+        });
+      });
+    }).then(function (info) {
+      localUrl = URL.createObjectURL(file);
+      var msg = {
+        v: 1, id: uid(), n: S.nick, ts: Date.now(), me: 1,
+        k: 'img', u: info.url, iv: info.iv, w: info.w, h: info.h
+      };
+      S.seen[msg.id] = 1;
+      renderMessage({ id: msg.id, n: msg.n, ts: msg.ts, k: 'img', u: msg.u, iv: msg.iv, w: msg.w, h: msg.h, local: localUrl }, true, true);
+      pushHist(msg);
+      scrollDown(true);
+      resetJump();
+      return seal(S.key, msg).then(publish).then(function () {
+        toast('图片已发送');
+        return true;
+      });
+    }).catch(function (err) {
+      if (localUrl) { try { URL.revokeObjectURL(localUrl); } catch (e) { /* ignore */ } }
+      toast('图片发送失败：' + String((err && err.message) || err));
+      return false;
     });
   }
 
@@ -1598,6 +1827,27 @@
     });
 
     $('sendBtn').addEventListener('click', submitInput);
+
+    $('imgBtn').addEventListener('click', function () {
+      $('fileInput').click();
+    });
+    $('fileInput').addEventListener('change', function () {
+      var files = this.files ? Array.prototype.slice.call(this.files) : [];
+      this.value = '';
+      for (var i = 0; i < files.length; i++) sendImage(files[i]);
+    });
+    document.addEventListener('paste', function (ev) {
+      if (!S.entered) return;
+      var cd = ev.clipboardData;
+      if (!cd || !cd.items) return;
+      for (var i = 0; i < cd.items.length; i++) {
+        var it = cd.items[i];
+        if (it.kind === 'file' && /^image\//.test(it.type || '')) {
+          var f = it.getAsFile();
+          if (f) { ev.preventDefault(); sendImage(f); return; }
+        }
+      }
+    });
 
     $('jumpBtn').addEventListener('click', function () {
       resetJump();
