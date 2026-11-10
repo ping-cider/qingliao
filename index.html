@@ -44,6 +44,8 @@
     padding:0 14px;font:inherit;font-size:16px;color:var(--ink);outline:none;transition:.15s;
   }
   input[type=text]:focus{background:#fff;border-color:#c7c7f5;box-shadow:0 0 0 4px rgba(91,91,214,.10)}
+  .check{display:flex;align-items:center;gap:7px;margin:-2px 2px 14px;font-size:12.5px;color:#6b7089;cursor:pointer;user-select:none}
+  .check input{width:15px;height:15px;accent-color:#5b5bd6;margin:0;cursor:pointer;flex:none}
   .row{display:flex;gap:8px}
   .row input{flex:1;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.3px}
   button{font:inherit;cursor:pointer;border:0;transition:.15s;border-radius:13px}
@@ -162,10 +164,11 @@
           <button type="button" class="ghost" id="rollBtn">换一个</button>
         </div>
       </label>
+      <label class="check"><input type="checkbox" id="rememberChk"><span>在这台电脑上记住房间口令</span></label>
       <button type="submit" class="primary" id="enterBtn">进入聊天</button>
     </form>
     <p class="err" id="joinErr" hidden></p>
-    <p class="hint">口令就是房间钥匙，只有口令相同的人才会进同一个房间；把口令告诉对方即可。消息在浏览器里加密后再转发，中转服务器看不到内容。</p>
+    <p class="hint">口令就是房间钥匙，只有口令相同的人才会进同一个房间；把口令告诉对方即可。消息在浏览器里加密后再转发，中转服务器看不到内容；本机保存的聊天记录同样是密文。</p>
   </section>
 
   <!-- 聊天 -->
@@ -178,6 +181,7 @@
       <div class="actions">
         <button type="button" class="ghost" id="inviteBtn" title="复制邀请信息发给对方">邀请</button>
         <button type="button" class="ghost" id="modeBtn" title="网络不通时可切换连接方式">实时</button>
+        <button type="button" class="ghost" id="clearBtn" title="清空这台电脑上保存的聊天记录">清空</button>
         <button type="button" class="ghost" id="leaveBtn" title="回到进入页">退出</button>
       </div>
     </header>
@@ -304,6 +308,21 @@
       });
   }
 
+  // 本地聊天记录用另一把由同一口令派生的密钥加密
+  function makeHistKey(room) {
+    return window.crypto.subtle
+      .importKey('raw', TE.encode('qingliao-hist|' + String(room).trim().toLowerCase()), 'PBKDF2', false, ['deriveKey'])
+      .then(function (base) {
+        return window.crypto.subtle.deriveKey(
+          { name: 'PBKDF2', salt: TE.encode('qingliao-hist-salt-v1'), iterations: 120000, hash: 'SHA-256' },
+          base,
+          { name: 'AES-GCM', length: 256 },
+          false,
+          ['encrypt', 'decrypt']
+        );
+      });
+  }
+
   function seal(key, obj) {
     var json = JSON.stringify(obj);
     if (!key) return Promise.resolve('p:' + toB64(TE.encode(json)));
@@ -335,13 +354,14 @@
   /* ------------------------------------------------------------------ */
 
   var S = {
-    nick: '', room: '', topic: '', key: null,
+    nick: '', room: '', topic: '', key: null, histKey: null,
     es: null, pollTimer: null, reconnectTimer: null,
     mode: 'sse',                 // sse | poll
     cursor: '',                  // 最后一条消息 id
     startedAt: 0,
     seen: Object.create(null),
     hist: [],
+    saveSeq: 0,
     retry: 0,
     connected: false,
     lastSender: '',
@@ -357,30 +377,82 @@
   }
 
   /* ------------------------------------------------------------------ */
-  /* 记录（本地保存，刷新不丢）                                           */
+  /* 记录（本地加密保存，刷新不丢）                                       */
   /* ------------------------------------------------------------------ */
 
-  function histKey() { return 'ql.hist.' + S.topic; }
+  function histKeyName() { return 'ql.hist.' + S.topic; }
 
   function saveHist() {
-    try { localStorage.setItem(histKey(), JSON.stringify(S.hist)); } catch (e) { /* ignore */ }
+    var seq = ++S.saveSeq;
+    var data = S.hist.slice();
+
+    if (!S.histKey) {                       // 不支持加密时退化为明文
+      try { localStorage.setItem(histKeyName(), JSON.stringify(data)); } catch (e) { /* ignore */ }
+      return Promise.resolve();
+    }
+
+    var iv = window.crypto.getRandomValues(new Uint8Array(12));
+    return window.crypto.subtle
+      .encrypt({ name: 'AES-GCM', iv: iv }, S.histKey, TE.encode(JSON.stringify(data)))
+      .then(function (ct) {
+        if (seq !== S.saveSeq) return;      // 有更新的快照，丢弃这次
+        try {
+          localStorage.setItem(histKeyName(), JSON.stringify({
+            v: 1,
+            iv: toB64(iv),
+            ct: toB64(new Uint8Array(ct))
+          }));
+        } catch (e) { /* 配额满等情况忽略 */ }
+      })
+      .catch(function () { /* ignore */ });
   }
 
   function loadHist() {
     S.hist = [];
-    try {
-      var raw = localStorage.getItem(histKey());
-      if (raw) {
-        var arr = JSON.parse(raw);
+    var raw = null;
+    try { raw = localStorage.getItem(histKeyName()); } catch (e) { raw = null; }
+    if (!raw) return Promise.resolve();
+
+    var parsed = null;
+    try { parsed = JSON.parse(raw); } catch (e) { parsed = null; }
+
+    // 旧版本存的是明文数组：直接读出来，并顺便升级成密文
+    if (Object.prototype.toString.call(parsed) === '[object Array]') {
+      S.hist = parsed.slice(-HIST_MAX);
+      saveHist();
+      return Promise.resolve();
+    }
+
+    if (!parsed || typeof parsed !== 'object' || !parsed.iv || !parsed.ct || !S.histKey) {
+      return Promise.resolve();
+    }
+
+    return window.crypto.subtle
+      .decrypt({ name: 'AES-GCM', iv: fromB64(parsed.iv) }, S.histKey, fromB64(parsed.ct))
+      .then(function (pt) {
+        var arr = JSON.parse(TD.decode(new Uint8Array(pt)));
         if (Object.prototype.toString.call(arr) === '[object Array]') S.hist = arr.slice(-HIST_MAX);
-      }
-    } catch (e) { S.hist = []; }
+      })
+      .catch(function () { S.hist = []; });
   }
 
   function pushHist(msg) {
     S.hist.push(msg);
     if (S.hist.length > HIST_MAX) S.hist.splice(0, S.hist.length - HIST_MAX);
     saveHist();
+  }
+
+  function clearHist() {
+    S.saveSeq++;                            // 作废进行中的写入
+    try { localStorage.removeItem(histKeyName()); } catch (e) { /* ignore */ }
+    S.hist = [];
+    S.lastSender = '';
+    S.lastTs = 0;
+    var logEl = $('log');
+    var emptyEl = $('emptyState');
+    while (logEl.firstChild) logEl.removeChild(logEl.firstChild);
+    emptyEl.classList.remove('is-hidden');
+    logEl.appendChild(emptyEl);
   }
 
   /* ------------------------------------------------------------------ */
@@ -675,20 +747,22 @@
 
     try {
       localStorage.setItem('ql.nick', nick);
-      localStorage.setItem('ql.room', room);
-      var h = JSON.parse(localStorage.getItem('ql.histCount') || '{}');
-      if (h && typeof h === 'object') { h[S.topic] = 1; localStorage.setItem('ql.histCount', JSON.stringify(h)); }
+      if ($('rememberChk') && $('rememberChk').checked) localStorage.setItem('ql.room', room);
+      else localStorage.removeItem('ql.room');
     } catch (e) { /* ignore */ }
 
     $('roomName').textContent = room;
 
     var ready = HAS_CRYPTO
-      ? makeKey(room).then(function (k) { S.key = k; }).catch(function () { S.key = null; })
+      ? Promise.all([makeKey(room), makeHistKey(room)]).then(function (keys) {
+          S.key = keys[0];
+          S.histKey = keys[1];
+        }).catch(function () { S.key = null; S.histKey = null; })
       : Promise.resolve();
 
     ready.then(function () {
       $('lockIcon').textContent = S.key ? '🔒' : '🔓';
-      $('lockIcon').title = S.key ? '消息已端到端加密' : '当前浏览器不支持加密，消息为明文';
+      $('lockIcon').title = S.key ? '消息已端到端加密，本地记录也已加密' : '当前浏览器不支持加密，消息与本地记录均为明文';
       $('joinScreen').classList.add('is-hidden');
       $('chatScreen').classList.remove('is-hidden');
       $('enterBtn').disabled = false;
@@ -700,7 +774,8 @@
       emptyEl.classList.remove('is-hidden');
       logEl.appendChild(emptyEl);
 
-      loadHist();
+      return loadHist();
+    }).then(function () {
       for (var i = 0; i < S.hist.length; i++) renderMessage(S.hist[i], S.hist[i].n === S.nick, false);
       if (S.hist.length) {
         addSystem('以上是这台电脑上保存的历史消息');
@@ -793,6 +868,7 @@
 
     $('nickInput').value = q.get('nick') || savedNick;
     $('roomInput').value = q.get('room') || savedRoom || randCode();
+    if (savedRoom && $('rememberChk')) $('rememberChk').checked = true;
 
     $('rollBtn').addEventListener('click', function () {
       $('roomInput').value = randCode();
@@ -831,6 +907,12 @@
     $('leaveBtn').addEventListener('click', function () {
       if (S.entered && !window.confirm('退出当前房间？')) return;
       leave();
+    });
+
+    $('clearBtn').addEventListener('click', function () {
+      if (!window.confirm('清空这台电脑上保存的聊天记录？\n（对方那边不受影响，清空后无法恢复）')) return;
+      clearHist();
+      toast('本机聊天记录已清空');
     });
 
     document.addEventListener('visibilitychange', function () {
