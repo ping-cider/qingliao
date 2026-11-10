@@ -654,9 +654,14 @@
     return el.scrollHeight - el.scrollTop - el.clientHeight < 90;
   }
 
-  function scrollDown() {
+  function scrollDown(instant) {
     var el = $('log');
-    requestAnimationFrame(function () { el.scrollTop = el.scrollHeight; });
+    requestAnimationFrame(function () {
+      var top = el.scrollHeight;
+      if (instant) el.style.scrollBehavior = 'auto';
+      el.scrollTop = top;
+      if (instant) el.style.scrollBehavior = '';
+    });
   }
 
   function addSystem(text) {
@@ -773,6 +778,7 @@
     $('qbText').textContent = String(msg.t).slice(0, 80);
     $('quoteBar').classList.remove('is-hidden');
     $('msgInput').focus();
+    scrollDown(true);
   }
 
   function clearQuote() {
@@ -1102,6 +1108,8 @@
     renderMessage(env, true, true);
     pushHist(env);
     clearQuote();
+    scrollDown(true);          // 自己发完消息，始终回到最新
+    setTimeout(function () { scrollDown(true); }, 60);   // 等输入框收回高度后再纠一次
 
     return seal(S.key, env)
       .then(publish)
@@ -1302,8 +1310,10 @@
 
   function autoGrow() {
     var el = $('msgInput');
+    var atBottom = nearBottom();
     el.style.height = 'auto';
     el.style.height = Math.min(132, el.scrollHeight) + 'px';
+    if (atBottom) scrollDown(true);     // 输入框变高时，别把最新消息挤出视野
   }
 
   function updateCounter() {
