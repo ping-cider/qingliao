@@ -84,11 +84,21 @@
   .actions{display:flex;gap:2px;flex:none}
   #moreBtn{font-size:16px;line-height:1;letter-spacing:1px;padding:5px 9px}
 
+  .logwrap{flex:1;min-height:0;position:relative;display:flex}
   .log{
-    flex:1;overflow-y:auto;overscroll-behavior:contain;padding:16px 16px 6px;
+    flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:16px 16px 6px;
     display:flex;flex-direction:column;gap:2px;scroll-behavior:smooth;
     background:linear-gradient(180deg,#fcfcff, #fff 40%);
   }
+  .jump{
+    position:absolute;left:50%;bottom:14px;transform:translateX(-50%);z-index:6;
+    display:inline-flex;align-items:center;gap:4px;white-space:nowrap;
+    background:linear-gradient(135deg,#5b5bd6,#7c3aed);color:#fff;
+    font-size:12.5px;font-weight:600;padding:7px 14px;border-radius:999px;
+    box-shadow:0 10px 24px rgba(91,91,214,.34);
+  }
+  .jump:hover{filter:brightness(1.06)}
+  .jump:active{transform:translateX(-50%) translateY(1px)}
   .empty{margin:auto;text-align:center;color:var(--muted);padding:24px}
   .emptyIcon{font-size:34px;margin-bottom:8px}
   .empty p{margin:4px 0;font-size:14px}
@@ -105,6 +115,8 @@
   .msg.own .bubble{background:linear-gradient(135deg,#5b5bd6,#7c3aed);color:#fff;border-bottom-right-radius:6px;box-shadow:0 8px 18px rgba(91,91,214,.24)}
   .msg.other .bubble{background:#f6f6fc;border:1px solid #ececf6;border-bottom-left-radius:6px}
   .meta{font-size:10.5px;line-height:1.3;color:#b0b4c6;margin:0;white-space:nowrap}
+  .status{font-size:10.5px;line-height:1.3;color:#b0b4c6;white-space:nowrap}
+  .status.read{color:#7c7cf0}
   .msg.failed .meta{color:var(--bad)}
   .msg.failed .bubble{opacity:.55}
   @keyframes pop{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
@@ -205,6 +217,8 @@
     .msg.other .bubble{background:#1e2230;border-color:#2a3042;color:var(--ink)}
     .name{color:#9aa1b6}
     .meta{color:#6d748a}
+    .status{color:#6d748a}
+    .status.read{color:#8f8ff5}
     .msg.own .bubble{box-shadow:0 8px 18px rgba(60,40,140,.45)}
     .field>span,.check{color:#a3a9bd}
     input[type=text]{background:#1b1f2b;border-color:#2a3042;color:var(--ink)}
@@ -297,13 +311,16 @@
       <button type="button" class="menu-item danger" id="clearBtn" role="menuitem">清空本机记录</button>
     </div>
 
-    <main class="log" id="log">
-      <div class="empty" id="emptyState">
-        <div class="emptyIcon">👋</div>
-        <p>还没有消息，打个招呼吧</p>
-        <p class="small">把房间口令告诉对方，TA 在同一个网页输入后就能收到</p>
-      </div>
-    </main>
+    <div class="logwrap">
+      <main class="log" id="log">
+        <div class="empty" id="emptyState">
+          <div class="emptyIcon">👋</div>
+          <p>还没有消息，打个招呼吧</p>
+          <p class="small">把房间口令告诉对方，TA 在同一个网页输入后就能收到</p>
+        </div>
+      </main>
+      <button type="button" class="jump is-hidden" id="jumpBtn">有新消息 ↓</button>
+    </div>
 
     <div class="quotebar is-hidden" id="quoteBar">
       <div class="qb-main">
@@ -488,7 +505,17 @@
     saveSeq: 0,
     retry: 0,
     unread: 0,
+    pending: 0,
     connected: false,
+    statusKind: 'connecting',
+    statusText: '连接中…',
+    peerTyping: false,
+    typingTimer: null,
+    peerReadTs: 0,          // 对方已读到的（我发出的最后一条消息的 ts）
+    lastIncomingTs: 0,
+    lastTypingSent: 0,
+    readTimer: null,
+    pendingReadTs: 0,
     lastSender: '',
     lastTs: 0,
     entered: false
@@ -557,10 +584,102 @@
   }
 
   function setStatus(kind, text) {
+    S.statusKind = kind;
+    S.statusText = text;
     var dot = $('dot');
     dot.className = 'dot ' + kind;
     $('statText').textContent = text;
     S.connected = kind === 'online';
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* 正在输入 / 已读（控制消息，不入历史、不缓存）                          */
+  /* ------------------------------------------------------------------ */
+
+  function sendControl(payload) {
+    if (!S.entered) return;
+    seal(S.key, payload).then(function (body) {
+      return fetch(BASE + '/' + encodeURIComponent(S.topic) + '?cache=no', {
+        method: 'POST',
+        body: body,
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        cache: 'no-store'
+      });
+    }).catch(function () { /* 控制消息失败无所谓 */ });
+  }
+
+  function maybeSendTyping() {
+    if (!S.entered) return;
+    var now = Date.now();
+    if (now - S.lastTypingSent < 3000) return;
+    S.lastTypingSent = now;
+    sendControl({ v: 1, k: 't' });
+  }
+
+  function showPeerTyping() {
+    if (S.peerTyping) {
+      clearTimeout(S.typingTimer);
+    }
+    S.peerTyping = true;
+    var dot = $('dot');
+    dot.className = 'dot connecting';
+    $('statText').textContent = '对方正在输入…';
+    clearTimeout(S.typingTimer);
+    S.typingTimer = setTimeout(function () {
+      S.peerTyping = false;
+      setStatus(S.statusKind, S.statusText);
+    }, 3500);
+  }
+
+  function hidePeerTyping() {
+    if (!S.peerTyping) return;
+    S.peerTyping = false;
+    clearTimeout(S.typingTimer);
+    setStatus(S.statusKind, S.statusText);
+  }
+
+  function onPeerRead(ts) {
+    ts = Number(ts) || 0;
+    if (!ts) return;
+    if (ts > S.peerReadTs) {
+      S.peerReadTs = ts;
+      refreshOwnStatus();
+    }
+  }
+
+  // 只在「我确实看到」时才回已读，且 1 秒内合并
+  function scheduleRead(ts) {
+    S.lastIncomingTs = Math.max(S.lastIncomingTs, Number(ts) || 0);
+    S.pendingReadTs = Math.max(S.pendingReadTs, Number(ts) || 0);
+    if (S.readTimer) return;
+    S.readTimer = setTimeout(function () {
+      S.readTimer = null;
+      var t = S.pendingReadTs;
+      S.pendingReadTs = 0;
+      if (t) sendControl({ v: 1, k: 'r', ts: t });
+    }, 1000);
+  }
+
+  // 窗口重新可见 / 获得焦点时，把期间收到的消息补一个已读
+  function markVisibleRead() {
+    if (document.visibilityState !== 'visible' || !document.hasFocus()) return;
+    if (S.lastIncomingTs) scheduleRead(S.lastIncomingTs);
+  }
+
+  function refreshOwnStatus() {    var logEl = $('log');
+    var old = logEl.querySelectorAll('.status');
+    for (var i = 0; i < old.length; i++) old[i].parentNode.removeChild(old[i]);
+    var owns = logEl.querySelectorAll('.msg.own');
+    if (!owns.length) return;
+    var last = owns[owns.length - 1];
+    var t = Number(last.getAttribute('data-ts')) || 0;
+    var read = t && S.peerReadTs && t <= S.peerReadTs;
+    var foot = last.querySelector('.foot');
+    if (!foot) return;
+    var st = document.createElement('span');
+    st.className = 'status' + (read ? ' read' : '');
+    st.textContent = read ? '已读' : '未读';
+    foot.appendChild(st);
   }
 
   /* ------------------------------------------------------------------ */
@@ -643,6 +762,8 @@
     while (logEl.firstChild) logEl.removeChild(logEl.firstChild);
     emptyEl.classList.remove('is-hidden');
     logEl.appendChild(emptyEl);
+    S.pending = 0;
+    updateJump();
   }
 
   /* ------------------------------------------------------------------ */
@@ -680,6 +801,7 @@
     wrap.className = 'msg ' + (own ? 'own' : 'other');
     if (animate === false) wrap.style.animation = 'none';
     if (msg.id) wrap.setAttribute('data-id', msg.id);
+    if (msg.ts) wrap.setAttribute('data-ts', String(msg.ts));
 
     var gap = msg.ts && S.lastTs ? (msg.ts - S.lastTs) : 0;
     var showName = !own && (S.lastSender !== msg.n || gap > 5 * 60 * 1000);
@@ -765,6 +887,8 @@
 
     S.lastSender = own ? '' : (msg.n || '对方');
     S.lastTs = msg.ts || Date.now();
+
+    if (own) refreshOwnStatus();     // 只在自己最后一条上标「未读/已读」
   }
 
   /* ------------------------------------------------------------------ */
@@ -809,6 +933,8 @@
     }
 
     return unseal(S.key, raw.message).then(function (env) {
+      if (env && env.k === 't') { showPeerTyping(); return; }     // 对方正在输入
+      if (env && env.k === 'r') { onPeerRead(env.ts); return; }   // 对方已读
       if (!env || typeof env.t !== 'string' || !env.t) return;
       if (env.id && S.seen[env.id]) return;
       if (env.id) S.seen[env.id] = 1;
@@ -829,7 +955,15 @@
       var wasNear = nearBottom();
       renderMessage(msg, false, true);
       pushHist(msg);
-      if (wasNear) scrollDown();
+      hidePeerTyping();
+      S.lastIncomingTs = Math.max(S.lastIncomingTs, msg.ts || 0);
+      if (document.visibilityState === 'visible' && document.hasFocus()) scheduleRead(msg.ts);
+      if (wasNear) {
+        scrollDown();
+      } else {
+        S.pending++;
+        updateJump();
+      }
       bumpUnread();
       notifyMessage(msg);
     }).catch(function () {
@@ -924,6 +1058,23 @@
     S.unread = 0;
     updateTitle();
     renderMini();
+  }
+
+  // 「有新消息 ↓」悬浮按钮：翻历史时有新消息才出现
+  function updateJump() {
+    var btn = $('jumpBtn');
+    if (!btn) return;
+    if (S.pending > 0) {
+      btn.textContent = (S.pending > 99 ? '99+' : S.pending) + ' 条新消息 ↓';
+      btn.classList.remove('is-hidden');
+    } else {
+      btn.classList.add('is-hidden');
+    }
+  }
+
+  function resetJump() {
+    S.pending = 0;
+    updateJump();
   }
 
   function closeMini() {
@@ -1109,6 +1260,7 @@
     pushHist(env);
     clearQuote();
     scrollDown(true);          // 自己发完消息，始终回到最新
+    resetJump();
     setTimeout(function () { scrollDown(true); }, 60);   // 等输入框收回高度后再纠一次
 
     return seal(S.key, env)
@@ -1133,6 +1285,8 @@
     el.classList.add('failed');
     var meta = el.querySelector('.meta');
     if (meta) meta.textContent = '未发送（点击重试）';
+    var st = el.querySelector('.status');
+    if (st) st.parentNode.removeChild(st);
     el.style.cursor = 'pointer';
     el.addEventListener('click', function () { retry(id); }, { once: true });
   }
@@ -1193,8 +1347,18 @@
     S.lastTs = 0;
     S.lastBeat = 0;
     S.unread = 0;
+    S.pending = 0;
+    S.peerReadTs = 0;
+    S.peerTyping = false;
+    S.lastIncomingTs = 0;
+    S.lastTypingSent = 0;
+    S.pendingReadTs = 0;
+    clearTimeout(S.typingTimer);
+    clearTimeout(S.readTimer);
+    S.readTimer = null;
     updateTitle();
     renderMini();
+    updateJump();
     clearQuote();
     $('menu').classList.add('is-hidden');
     $('moreBtn').setAttribute('aria-expanded', 'false');
@@ -1267,8 +1431,12 @@
     $('chatScreen').classList.add('is-hidden');
     $('joinScreen').classList.remove('is-hidden');
     S.unread = 0;
+    S.pending = 0;
+    S.peerTyping = false;
+    clearTimeout(S.typingTimer);
     updateTitle();
     renderMini();
+    updateJump();
   }
 
   /* ------------------------------------------------------------------ */
@@ -1368,9 +1536,18 @@
 
     $('sendBtn').addEventListener('click', submitInput);
 
+    $('jumpBtn').addEventListener('click', function () {
+      resetJump();
+      scrollDown(true);
+    });
+    $('log').addEventListener('scroll', function () {
+      if (S.pending && nearBottom()) resetJump();
+    });
+
     $('msgInput').addEventListener('input', function () {
       autoGrow();
       updateCounter();
+      if ($('msgInput').value.replace(/\s+/g, '')) maybeSendTyping();
     });
     $('msgInput').addEventListener('keydown', function (ev) {
       if (ev.key === 'Enter' && !ev.shiftKey && !ev.isComposing && ev.keyCode !== 229) {
@@ -1515,8 +1692,12 @@
     document.addEventListener('visibilitychange', function () {
       if (!document.hidden) clearUnread();
       if (!document.hidden) updateTitle();
+      if (!document.hidden) markVisibleRead();
     });
-    window.addEventListener('focus', clearUnread);
+    window.addEventListener('focus', function () {
+      clearUnread();
+      markVisibleRead();
+    });
 
     // 邀请链接里带口令：?room=xxx&nick=yyy&go=1
     if (q.get('go') === '1' && q.get('room') && q.get('nick')) {
