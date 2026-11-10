@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="color-scheme" content="light">
+<meta name="color-scheme" content="light dark">
 <title>轻聊 · 极简网页聊天</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%235b5bd6'/%3E%3Cpath d='M18 22h28v16H30l-8 7v-7h-4z' fill='white'/%3E%3C/svg%3E">
 <style>
@@ -62,7 +62,7 @@
 
   /* ---------- 聊天 ---------- */
   .chat{
-    width:min(880px,100%);height:min(calc(100dvh - 36px),920px);
+    width:min(880px,100%);height:min(calc(100dvh - 36px),920px);position:relative;
     background:var(--card);border-radius:24px;overflow:hidden;display:flex;flex-direction:column;
     box-shadow:0 24px 60px rgba(31,34,51,.13), 0 2px 6px rgba(31,34,51,.05);
     border:1px solid rgba(255,255,255,.8);
@@ -82,6 +82,7 @@
   .dot.connecting{animation:pulse 1.2s ease-in-out infinite}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
   .actions{display:flex;gap:2px;flex:none}
+  #moreBtn{font-size:16px;line-height:1;letter-spacing:1px;padding:5px 9px}
 
   .log{
     flex:1;overflow-y:auto;overscroll-behavior:contain;padding:16px 16px 6px;
@@ -103,15 +104,63 @@
   }
   .msg.own .bubble{background:linear-gradient(135deg,#5b5bd6,#7c3aed);color:#fff;border-bottom-right-radius:6px;box-shadow:0 8px 18px rgba(91,91,214,.24)}
   .msg.other .bubble{background:#f6f6fc;border:1px solid #ececf6;border-bottom-left-radius:6px}
-  .meta{font-size:10.5px;line-height:1.3;color:#b0b4c6;margin:3px 6px 2px}
+  .meta{font-size:10.5px;line-height:1.3;color:#b0b4c6;margin:0;white-space:nowrap}
   .msg.failed .meta{color:var(--bad)}
   .msg.failed .bubble{opacity:.55}
   @keyframes pop{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 
+  /* 消息上的小工具（引用 / 复制） */
+  .msg{position:relative}
+  .foot{display:flex;align-items:center;gap:8px;margin:2px 6px 3px;min-height:18px}
+  .msg.own .foot{flex-direction:row-reverse}
+  .tools{display:none;gap:6px}
+  .msg.show-tools .tools{display:flex}
+  @media (hover:hover){ .msg:hover .tools{display:flex} }
+  .tool{background:#ececf8;color:#5b6076;font-size:11px;padding:1px 7px;border-radius:7px;line-height:1.5}
+  .tool:hover{background:#dedef4;color:#3f3f6e}
+
+  /* 引用块 */
+  .quote{border-left:3px solid rgba(255,255,255,.55);padding:1px 0 2px 8px;margin:0 0 6px;font-size:12.5px;line-height:1.45;opacity:.9;cursor:pointer}
+  .msg.other .quote{border-left-color:#c3c6e0}
+  .quote .qn{font-weight:650;margin-right:4px}
+  .msg.flash .bubble{outline:2px solid #b9b9f0;outline-offset:2px}
+
   .composer{
     display:flex;gap:10px;align-items:flex-end;padding:12px 14px calc(12px + env(safe-area-inset-bottom));
-    border-top:1px solid var(--line);background:#fff;
+    border-top:1px solid var(--line);background:#fff;position:relative;
   }
+  .counter{
+    position:absolute;right:16px;bottom:calc(100% + 6px);font-size:10.5px;color:#9aa0b6;
+    background:#fff;border:1px solid var(--line);border-radius:999px;padding:2px 8px;
+  }
+
+  /* 引用条 */
+  .quotebar{
+    display:flex;align-items:center;gap:10px;padding:9px 14px;border-top:1px solid var(--line);
+    background:#f7f7fc;
+  }
+  .quotebar .qb-main{flex:1;min-width:0;border-left:3px solid #b9b9f0;padding-left:9px}
+  .qb-name{display:block;font-size:11.5px;font-weight:650;color:#6b7089}
+  .qb-text{display:block;font-size:12.5px;color:#8b90a6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .qb-close{width:28px;height:28px;border-radius:9px;background:transparent;color:#8b90a6;font-size:17px;line-height:1;flex:none}
+  .qb-close:hover{background:#ededf9;color:#3f3f6e}
+
+  /* 更多菜单 */
+  .menu{
+    position:absolute;top:56px;right:12px;z-index:30;width:186px;padding:6px;
+    background:#fff;border:1px solid var(--line);border-radius:14px;
+    box-shadow:0 16px 40px rgba(31,34,51,.16);
+  }
+  .menu-item{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;
+    padding:9px 10px;border-radius:10px;background:transparent;color:var(--ink);font-size:13.5px;text-align:left;
+  }
+  .menu-item:hover{background:#f4f4fb}
+  .menu-item.danger{color:#d14343}
+  .switch{width:32px;height:18px;border-radius:999px;background:#dedee9;position:relative;flex:none;transition:.15s}
+  .switch::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:.15s}
+  .menu-item[aria-checked=true] .switch{background:var(--accent)}
+  .menu-item[aria-checked=true] .switch::after{left:16px}
   #msgInput{
     flex:1;resize:none;max-height:132px;min-height:46px;border:1px solid var(--line);background:#f8f8fd;
     border-radius:16px;padding:12px 14px;font:inherit;font-size:16px;line-height:1.45;color:var(--ink);
@@ -137,6 +186,55 @@
   }
   @media (prefers-reduced-motion:reduce){
     *{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+  }
+
+  /* ---------- 深色模式 ---------- */
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0e1016; --card:#171a23; --ink:#e7e9f3; --muted:#8f96ab; --line:#272c3a;
+    }
+    body{
+      background:
+        radial-gradient(1000px 600px at 8% -12%, rgba(64,66,140,.45) 0%, rgba(64,66,140,0) 62%),
+        radial-gradient(900px 560px at 96% -6%, rgba(120,40,90,.35) 0%, rgba(120,40,90,0) 58%),
+        var(--bg);
+    }
+    .card,.chat{background:var(--card);border-color:#232837;box-shadow:0 24px 60px rgba(0,0,0,.45)}
+    .topbar{background:linear-gradient(180deg,#171a23,rgba(23,26,35,.94));border-bottom-color:var(--line)}
+    .log{background:linear-gradient(180deg,#141722,#171a23 40%)}
+    .msg.other .bubble{background:#1e2230;border-color:#2a3042;color:var(--ink)}
+    .name{color:#9aa1b6}
+    .meta{color:#6d748a}
+    .msg.own .bubble{box-shadow:0 8px 18px rgba(60,40,140,.45)}
+    .field>span,.check{color:#a3a9bd}
+    input[type=text]{background:#1b1f2b;border-color:#2a3042;color:var(--ink)}
+    input[type=text]:focus{background:#202533;border-color:#4a4ac0}
+    #msgInput{background:#1b1f2b;border-color:#2a3042;color:var(--ink)}
+    #msgInput:focus{background:#202533;border-color:#4a4ac0}
+    #msgInput::placeholder{color:#5f667c}
+    .composer{background:var(--card);border-top-color:var(--line)}
+    .counter{background:#1e2230;border-color:#2a3042;color:#8f96ab}
+    .tool{background:#232838;color:#b9c0d4}
+    .tool:hover{background:#2b3145;color:#fff}
+    .sys{background:#1e2230;color:#8b93a8}
+    .empty{color:var(--muted)}
+    .menu{background:#1c2130;border-color:#2a3042;box-shadow:0 16px 40px rgba(0,0,0,.5)}
+    .menu-item{color:var(--ink)}
+    .menu-item:hover{background:#242a3a}
+    .switch{background:#3a4054}
+    .ghost{color:#aab1c6}
+    .ghost:hover{background:#242a3a;color:#fff}
+    .tool{background:#252b3b;color:#b9c0d4}
+    .tool:hover{background:#2f3648;color:#fff}
+    .msg.other .quote{border-left-color:#4a5270}
+    .quotebar{background:#1a1f2c;border-top-color:var(--line)}
+    .quotebar .qb-main{border-left-color:#5b5bd6}
+    .qb-name{color:#a3a9bd}
+    .qb-text{color:#7d8499}
+    .qb-close{color:#8f96ab}
+    .qb-close:hover{background:#242a3a;color:#fff}
+    .toast{background:rgba(230,232,242,.96);color:#14161d}
+    .msg.flash .bubble{outline-color:#7c7cf0}
   }
 </style>
 </head>
@@ -181,10 +279,20 @@
       <div class="actions">
         <button type="button" class="ghost" id="inviteBtn" title="复制邀请信息发给对方">邀请</button>
         <button type="button" class="ghost" id="modeBtn" title="网络不通时可切换连接方式">实时</button>
-        <button type="button" class="ghost" id="clearBtn" title="清空这台电脑上保存的聊天记录">清空</button>
+        <button type="button" class="ghost" id="moreBtn" title="更多选项" aria-haspopup="menu" aria-expanded="false">⋯</button>
         <button type="button" class="ghost" id="leaveBtn" title="回到进入页">退出</button>
       </div>
     </header>
+
+    <div class="menu is-hidden" id="menu" role="menu">
+      <button type="button" class="menu-item" id="notifyItem" role="menuitemcheckbox" aria-checked="false">
+        <span>消息提醒</span><i class="switch"></i>
+      </button>
+      <button type="button" class="menu-item" id="soundItem" role="menuitemcheckbox" aria-checked="false">
+        <span>提示音</span><i class="switch"></i>
+      </button>
+      <button type="button" class="menu-item danger" id="clearBtn" role="menuitem">清空本机记录</button>
+    </div>
 
     <main class="log" id="log">
       <div class="empty" id="emptyState">
@@ -194,7 +302,16 @@
       </div>
     </main>
 
+    <div class="quotebar is-hidden" id="quoteBar">
+      <div class="qb-main">
+        <span class="qb-name" id="qbName"></span>
+        <span class="qb-text" id="qbText"></span>
+      </div>
+      <button type="button" class="qb-close" id="qbClose" aria-label="取消引用">×</button>
+    </div>
+
     <footer class="composer">
+      <span class="counter is-hidden" id="counter"></span>
       <textarea id="msgInput" rows="1" maxlength="800" enterkeyhint="send" autocapitalize="off" placeholder="输入消息，Enter 发送，Shift + Enter 换行"></textarea>
       <button type="button" class="primary send" id="sendBtn">发送</button>
     </footer>
@@ -359,6 +476,10 @@
     mode: 'sse',                 // sse | poll
     cursor: '',                  // 最后一条消息 id
     startedAt: 0,
+    catchupSince: 0,             // 进房时补收的起点（秒）
+    lastBeat: 0,                 // 最近一次收到服务端数据的时间
+    quote: null,                 // 正在引用的消息
+    audio: null,
     seen: Object.create(null),
     hist: [],
     saveSeq: 0,
@@ -368,6 +489,68 @@
     lastTs: 0,
     entered: false
   };
+
+  // 本地偏好：消息提醒 / 提示音
+  var P = { notify: false, sound: false };
+  try {
+    var savedPref = JSON.parse(localStorage.getItem('ql.pref') || '{}');
+    if (savedPref && typeof savedPref === 'object') {
+      P.notify = !!savedPref.notify;
+      P.sound = !!savedPref.sound;
+    }
+  } catch (e) { /* ignore */ }
+
+  function savePref() {
+    try { localStorage.setItem('ql.pref', JSON.stringify(P)); } catch (e) { /* ignore */ }
+  }
+
+  function ensureAudio() {
+    try {
+      if (S.audio) return S.audio;
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      S.audio = new AC();
+      return S.audio;
+    } catch (e) { return null; }
+  }
+
+  function beep() {
+    try {
+      var ctx = ensureAudio();
+      if (!ctx) return;
+      if (ctx.state === 'suspended') ctx.resume();
+      var o = ctx.createOscillator();
+      var g = ctx.createGain();
+      o.type = 'sine';
+      o.frequency.value = 880;
+      g.gain.setValueAtTime(0.0001, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.05, ctx.currentTime + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.2);
+      o.connect(g);
+      g.connect(ctx.destination);
+      o.start();
+      o.stop(ctx.currentTime + 0.22);
+    } catch (e) { /* ignore */ }
+  }
+
+  // 页面在后台时才打扰：可选提示音 + 系统通知
+  function notifyMessage(msg) {
+    if (!document.hidden) return;
+    if (P.sound) beep();
+    if (!P.notify) return;
+    try {
+      if (!('Notification' in window) || Notification.permission !== 'granted') return;
+      var n = new Notification(String(msg.n || '对方') + ' · 轻聊', {
+        body: String(msg.t).slice(0, 120),
+        tag: msg.id,
+        silent: true
+      });
+      n.onclick = function () {
+        try { window.focus(); } catch (e) { /* ignore */ }
+        n.close();
+      };
+    } catch (e) { /* ignore */ }
+  }
 
   function setStatus(kind, text) {
     var dot = $('dot');
@@ -444,7 +627,10 @@
 
   function clearHist() {
     S.saveSeq++;                            // 作废进行中的写入
-    try { localStorage.removeItem(histKeyName()); } catch (e) { /* ignore */ }
+    try {
+      localStorage.removeItem(histKeyName());
+      localStorage.setItem('ql.clear.' + S.topic, String(Date.now()));   // 补收时不把清掉的捞回来
+    } catch (e) { /* ignore */ }
     S.hist = [];
     S.lastSender = '';
     S.lastTs = 0;
@@ -498,18 +684,104 @@
 
     var bubble = document.createElement('div');
     bubble.className = 'bubble';
-    bubble.textContent = msg.t;             // 纯文本，天然防注入
+
+    // 引用块
+    if (msg.q && msg.q.id) {
+      var quoted = document.createElement('div');
+      quoted.className = 'quote';
+      quoted.title = '点击跳转到原消息';
+      var qn = document.createElement('span');
+      qn.className = 'qn';
+      qn.textContent = (msg.q.n || '对方') + '：';
+      var qt = document.createElement('span');
+      qt.className = 'qt';
+      qt.textContent = String(msg.q.t || '').slice(0, 60);
+      quoted.appendChild(qn);
+      quoted.appendChild(qt);
+      quoted.addEventListener('click', function (ev) {
+        ev.stopPropagation();
+        jumpTo(msg.q.id);
+      });
+      bubble.appendChild(quoted);
+    }
+
+    bubble.appendChild(document.createTextNode(msg.t));   // 纯文本，天然防注入
     wrap.appendChild(bubble);
 
-    var meta = document.createElement('div');
+    var meta = document.createElement('span');
     meta.className = 'meta';
     meta.textContent = fmtTime(msg.ts);
-    wrap.appendChild(meta);
+
+    var foot = document.createElement('div');
+    foot.className = 'foot';
+    foot.appendChild(meta);
+
+    // 引用 / 复制
+    var tools = document.createElement('div');
+    tools.className = 'tools';
+    var btnQuote = document.createElement('button');
+    btnQuote.type = 'button';
+    btnQuote.className = 'tool';
+    btnQuote.textContent = '引用';
+    btnQuote.addEventListener('click', function (ev) {
+      ev.stopPropagation();
+      startQuote(msg);
+      wrap.classList.remove('show-tools');
+    });
+    var btnCopy = document.createElement('button');
+    btnCopy.type = 'button';
+    btnCopy.className = 'tool';
+    btnCopy.textContent = '复制';
+    btnCopy.addEventListener('click', function (ev) {
+      ev.stopPropagation();
+      copyText(msg.t).then(function (ok) {
+        toast(ok ? '已复制这条消息' : '复制失败，请手动选中');
+      });
+      wrap.classList.remove('show-tools');
+    });
+    tools.appendChild(btnQuote);
+    tools.appendChild(btnCopy);
+    foot.appendChild(tools);
+    wrap.appendChild(foot);
+
+    bubble.addEventListener('click', function (ev) {
+      if (wrap.classList.contains('failed')) return;   // 失败消息的点击交给外层重发
+      ev.stopPropagation();
+      var open = $('log').querySelector('.msg.show-tools');
+      if (open && open !== wrap) open.classList.remove('show-tools');
+      wrap.classList.toggle('show-tools');
+    });
 
     $('log').appendChild(wrap);
 
     S.lastSender = own ? '' : (msg.n || '对方');
     S.lastTs = msg.ts || Date.now();
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* 引用 / 跳转                                                         */
+  /* ------------------------------------------------------------------ */
+
+  function startQuote(msg) {
+    if (!msg || !msg.id) return;
+    S.quote = { id: msg.id, n: String(msg.n || '对方').slice(0, 24), t: String(msg.t).slice(0, 80) };
+    $('qbName').textContent = (msg.n || '对方') + '：';
+    $('qbText').textContent = String(msg.t).slice(0, 80);
+    $('quoteBar').classList.remove('is-hidden');
+    $('msgInput').focus();
+  }
+
+  function clearQuote() {
+    S.quote = null;
+    $('quoteBar').classList.add('is-hidden');
+  }
+
+  function jumpTo(id) {
+    var el = $('log').querySelector('[data-id="' + id + '"]');
+    if (!el) { toast('这条消息不在本机记录里'); return; }
+    try { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) { el.scrollIntoView(); }
+    el.classList.add('flash');
+    setTimeout(function () { el.classList.remove('flash'); }, 1200);
   }
 
   /* ------------------------------------------------------------------ */
@@ -537,11 +809,19 @@
         t: String(env.t).slice(0, MAX_LEN),
         ts: Number(env.ts) || (raw.time ? raw.time * 1000 : Date.now())
       };
+      if (env.q && env.q.id) {
+        msg.q = {
+          id: String(env.q.id).slice(0, 64),
+          n: String(env.q.n || '').slice(0, 24),
+          t: String(env.q.t || '').slice(0, 80)
+        };
+      }
       var wasNear = nearBottom();
       renderMessage(msg, false, true);
       pushHist(msg);
       if (wasNear) scrollDown();
       notifyHidden();
+      notifyMessage(msg);
     }).catch(function () {
       addSystem('收到一条无法解密的消息（对方的房间口令可能不一致）');
     });
@@ -574,7 +854,7 @@
   function connect() {
     if (!S.entered) return;
     teardown();
-    var since = S.cursor || Math.floor(S.startedAt / 1000);
+    var since = S.cursor || S.catchupSince || Math.floor(S.startedAt / 1000);
 
     if (S.mode === 'poll') {
       setStatus('connecting', '连接中…');
@@ -594,12 +874,21 @@
       return;
     }
     S.es = es;
+    S.lastBeat = Date.now();
 
     es.onopen = function () {
       S.retry = 0;
+      S.lastBeat = Date.now();
       setStatus('online', '已连接');
     };
-    es.onmessage = function (ev) { handleRaw(ev.data); };
+    es.onmessage = function (ev) {
+      S.lastBeat = Date.now();
+      handleRaw(ev.data);
+    };
+    try {
+      es.addEventListener('keepalive', function () { S.lastBeat = Date.now(); });
+      es.addEventListener('open', function () { S.lastBeat = Date.now(); });
+    } catch (e) { /* ignore */ }
     es.onerror = function () {
       if (es.readyState === 2) {          // CLOSED：浏览器已经放弃自动重连
         teardown();
@@ -622,6 +911,7 @@
       .then(function (text) {
         setStatus('online', '已连接（兼容模式）');
         S.retry = 0;
+        S.lastBeat = Date.now();
         var lines = text.split('\n');
         for (var i = 0; i < lines.length; i++) {
           if (lines[i].trim()) handleRaw(lines[i]);
@@ -631,6 +921,16 @@
         setStatus('offline', '连接中断，正在重试…');
       });
   }
+
+  // 长连接可能被代理悄悄掐断（浏览器不报错），这里做心跳看门狗
+  setInterval(function () {
+    if (!S.entered || S.mode !== 'sse' || !S.es || S.es.readyState !== 1) return;
+    if (S.lastBeat && Date.now() - S.lastBeat > 95000) {
+      setStatus('offline', '连接可能已失效，正在重连…');
+      S.retry = 0;
+      connect();
+    }
+  }, 15000);
 
   function publish(body) {
     var ctrl = null;
@@ -662,10 +962,12 @@
     if (!text) return Promise.resolve(false);
 
     var env = { v: 1, id: uid(), n: S.nick, t: text, ts: Date.now() };
+    if (S.quote && S.quote.id) env.q = { id: S.quote.id, n: S.quote.n, t: S.quote.t };
     S.seen[env.id] = 1;
 
     renderMessage(env, true, true);
     pushHist(env);
+    clearQuote();
 
     return seal(S.key, env)
       .then(publish)
@@ -731,6 +1033,9 @@
     if (room.length < 2) { showJoinError('房间口令至少 2 个字符'); $('roomInput').focus(); return; }
 
     showJoinError('');
+    if (room.length < 8) {
+      toast('口令偏短：建议至少 8 位，或点「换一个」用随机口令');
+    }
     $('enterBtn').disabled = true;
     $('enterBtn').textContent = '正在进入…';
 
@@ -744,6 +1049,11 @@
     S.retry = 0;
     S.lastSender = '';
     S.lastTs = 0;
+    S.lastBeat = 0;
+    clearQuote();
+    $('menu').classList.add('is-hidden');
+    $('moreBtn').setAttribute('aria-expanded', 'false');
+    $('chatScreen').style.height = '';
 
     try {
       localStorage.setItem('ql.nick', nick);
@@ -781,6 +1091,17 @@
         addSystem('以上是这台电脑上保存的历史消息');
         scrollDown();
       }
+
+      // 补收离线期间的消息：从中转缓存里往回捞（最多 12 小时，清空过就从清空时间起算）
+      var clearedAt = 0;
+      try { clearedAt = Number(localStorage.getItem('ql.clear.' + S.topic)) || 0; } catch (e) { clearedAt = 0; }
+      var lastTs = S.hist.length ? (S.hist[S.hist.length - 1].ts || 0) : 0;
+      var floorTs = Math.max(Date.now() - 12 * 3600 * 1000, clearedAt, lastTs - 120000);
+      S.catchupSince = Math.floor(Math.min(floorTs, Date.now()) / 1000);
+      for (var j = 0; j < S.hist.length; j++) {
+        if (S.hist[j].id) S.seen[S.hist[j].id] = 1;      // 已有的不重复渲染
+      }
+
       if (!HAS_CRYPTO) toast('浏览器不支持加密，消息将以明文发送');
       connect();
       var touchOnly = false;
@@ -794,6 +1115,10 @@
     teardown();
     S.es = null;
     setStatus('offline', '已退出');
+    clearQuote();
+    $('menu').classList.add('is-hidden');
+    $('moreBtn').setAttribute('aria-expanded', 'false');
+    $('chatScreen').style.height = '';
     $('chatScreen').classList.add('is-hidden');
     $('joinScreen').classList.remove('is-hidden');
     document.title = '轻聊 · 极简网页聊天';
@@ -842,12 +1167,24 @@
     el.style.height = Math.min(132, el.scrollHeight) + 'px';
   }
 
+  function updateCounter() {
+    var n = $('msgInput').value.length;
+    var el = $('counter');
+    if (n >= 650) {
+      el.textContent = n + ' / ' + MAX_LEN;
+      el.classList.remove('is-hidden');
+    } else {
+      el.classList.add('is-hidden');
+    }
+  }
+
   function submitInput() {
     var el = $('msgInput');
     var text = el.value;
     if (!text.replace(/\s+/g, '')) return;
     el.value = '';
     autoGrow();
+    updateCounter();
     sendMessage(text);
   }
 
@@ -882,7 +1219,10 @@
 
     $('sendBtn').addEventListener('click', submitInput);
 
-    $('msgInput').addEventListener('input', autoGrow);
+    $('msgInput').addEventListener('input', function () {
+      autoGrow();
+      updateCounter();
+    });
     $('msgInput').addEventListener('keydown', function (ev) {
       if (ev.key === 'Enter' && !ev.shiftKey && !ev.isComposing && ev.keyCode !== 229) {
         ev.preventDefault();
@@ -909,11 +1249,113 @@
       leave();
     });
 
+    /* ---------- 更多菜单 ---------- */
+    function hideMenu() {
+      $('menu').classList.add('is-hidden');
+      $('moreBtn').setAttribute('aria-expanded', 'false');
+    }
+    function setSwitch(el, on) { el.setAttribute('aria-checked', on ? 'true' : 'false'); }
+
+    setSwitch($('notifyItem'), P.notify);
+    setSwitch($('soundItem'), P.sound);
+
+    $('moreBtn').addEventListener('click', function (ev) {
+      ev.stopPropagation();
+      var open = $('menu').classList.contains('is-hidden');
+      $('menu').classList.toggle('is-hidden', !open);
+      $('moreBtn').setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+    $('menu').addEventListener('click', function (ev) { ev.stopPropagation(); });
+
+    $('notifyItem').addEventListener('click', function () {
+      if (P.notify) {
+        P.notify = false;
+        setSwitch($('notifyItem'), false);
+        savePref();
+        toast('已关闭消息提醒');
+        return;
+      }
+      if (!('Notification' in window)) { toast('这个浏览器不支持桌面通知'); return; }
+      if (Notification.permission === 'granted') {
+        P.notify = true;
+        setSwitch($('notifyItem'), true);
+        savePref();
+        toast('已开启：页面在后台时提醒');
+        return;
+      }
+      if (Notification.permission === 'denied') { toast('通知被浏览器拒绝了，请到浏览器设置里允许'); return; }
+      Notification.requestPermission().then(function (perm) {
+        if (perm === 'granted') {
+          P.notify = true;
+          setSwitch($('notifyItem'), true);
+          savePref();
+          toast('已开启：页面在后台时提醒');
+        } else {
+          toast('没有拿到通知权限');
+        }
+      });
+    });
+
+    $('soundItem').addEventListener('click', function () {
+      P.sound = !P.sound;
+      setSwitch($('soundItem'), P.sound);
+      savePref();
+      if (P.sound) { ensureAudio(); beep(); }
+      toast(P.sound ? '已开启提示音' : '已关闭提示音');
+    });
+
     $('clearBtn').addEventListener('click', function () {
       if (!window.confirm('清空这台电脑上保存的聊天记录？\n（对方那边不受影响，清空后无法恢复）')) return;
       clearHist();
+      hideMenu();
       toast('本机聊天记录已清空');
     });
+
+    $('qbClose').addEventListener('click', function () {
+      clearQuote();
+      $('msgInput').focus();
+    });
+
+    document.addEventListener('click', function (ev) {
+      if (!$('menu').classList.contains('is-hidden') &&
+          !$('menu').contains(ev.target) && ev.target !== $('moreBtn')) {
+        hideMenu();
+      }
+      var openMsg = $('log').querySelector('.msg.show-tools');
+      if (openMsg && !openMsg.contains(ev.target)) openMsg.classList.remove('show-tools');
+    });
+
+    document.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Escape') {
+        hideMenu();
+        if (S.quote) clearQuote();
+      }
+    });
+
+    /* ---------- 断线看门狗 & 网络恢复 ---------- */
+    window.addEventListener('online', function () {
+      if (S.entered && !S.connected) connect();
+    });
+    window.addEventListener('offline', function () {
+      if (S.entered) setStatus('offline', '网络已断开');
+    });
+
+    /* ---------- 手机键盘弹起时保持输入框可见 ---------- */
+    if (window.visualViewport) {
+      var vv = window.visualViewport;
+      var syncViewport = function () {
+        var chat = $('chatScreen');
+        if (!chat) return;
+        if (S.entered && window.innerWidth <= 700) {
+          chat.style.height = Math.max(280, Math.round(vv.height)) + 'px';
+          scrollDown();
+        } else {
+          chat.style.height = '';
+        }
+      };
+      vv.addEventListener('resize', syncViewport);
+      vv.addEventListener('scroll', syncViewport);
+    }
 
     document.addEventListener('visibilitychange', function () {
       if (!document.hidden) document.title = '轻聊 · 极简网页聊天';
@@ -948,8 +1390,10 @@
     makeKey: makeKey,
     hasCrypto: function () { return HAS_CRYPTO; },
     state: S,
+    prefs: P,
     send: sendMessage,
     feed: handleRaw,
+    quote: startQuote,
     enter: enter
   };
 
