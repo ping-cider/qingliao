@@ -410,7 +410,7 @@
 (function () {
   'use strict';
 
-  var VERSION = '2.2.0';
+  var VERSION = '2.2.2';
   var BASE = 'https://ntfy.sh';        // 消息中转（无需注册的公共服务）
   var MAX_LEN = 800;
   var HIST_MAX = 300;
@@ -575,11 +575,8 @@
     connected: false,
     statusKind: 'connecting',
     statusText: '连接中…',
-    peerTyping: false,
-    typingTimer: null,
     peerReadTs: 0,          // 对方已读到的（我发出的最后一条消息的 ts）
     lastIncomingTs: 0,
-    lastTypingSent: 0,
     readTimer: null,
     pendingReadTs: 0,
     lastSender: '',
@@ -655,14 +652,13 @@
     S.statusKind = kind;
     S.statusText = text;
     S.connected = kind === 'online';
-    if (S.peerTyping && kind === 'online') return;   // 别把「正在输入」刷掉
     var dot = $('dot');
     dot.className = 'dot ' + kind;
     $('statText').textContent = text;
   }
 
   /* ------------------------------------------------------------------ */
-  /* 正在输入 / 已读（控制消息，不入历史、不缓存）                          */
+  /* 已读回执（控制消息，不入历史）                                        */
   /* ------------------------------------------------------------------ */
 
   function sendControl(payload) {
@@ -680,33 +676,6 @@
         cache: 'no-store'
       });
     }).catch(function () { /* 控制消息失败无所谓 */ });
-  }
-
-  function maybeSendTyping() {
-    if (!S.entered) return;
-    var now = Date.now();
-    if (now - S.lastTypingSent < 2000) return;
-    S.lastTypingSent = now;
-    sendControl({ k: 't' });
-  }
-
-  function showPeerTyping() {
-    S.peerTyping = true;
-    var dot = $('dot');
-    dot.className = 'dot connecting';
-    $('statText').textContent = '对方正在输入…';
-    clearTimeout(S.typingTimer);
-    S.typingTimer = setTimeout(function () {
-      S.peerTyping = false;
-      setStatus(S.statusKind, S.statusText);
-    }, 5000);
-  }
-
-  function hidePeerTyping() {
-    if (!S.peerTyping) return;
-    S.peerTyping = false;
-    clearTimeout(S.typingTimer);
-    setStatus(S.statusKind, S.statusText);
   }
 
   function onPeerRead(ts) {
@@ -1060,11 +1029,10 @@
     }
 
     return unseal(S.key, raw.message).then(function (env) {
-      if (env && (env.k === 't' || env.k === 'r')) {
+      if (env && env.k === 'r') {
         if (env.c && env.c === S.clientId) return;                    // 自己发的回声
         if (Date.now() - (Number(env.at) || 0) > 20000) return;       // 补收回来的旧控制消息，丢掉
-        if (env.k === 't') { showPeerTyping(); return; }              // 对方正在输入
-        if (env.k === 'r') { onPeerRead(env.ts); return; }            // 对方已读
+        onPeerRead(env.ts);                                           // 对方已读
         return;
       }
       if (!env || (!env.t && env.k !== 'img')) return;
@@ -1102,7 +1070,6 @@
       var wasNear = nearBottom();
       renderMessage(msg, false, true);
       pushHist(msg);
-      hidePeerTyping();
       S.lastIncomingTs = Math.max(S.lastIncomingTs, msg.ts || 0);
       if (document.visibilityState === 'visible' && document.hasFocus()) scheduleRead(msg.ts);
       if (wasNear) {
@@ -1556,12 +1523,19 @@
       })
       .catch(function (err) {
         markFailed(env.id);
-        var msg = String(err && err.message || err);
-        if (msg.indexOf('429') >= 0) toast('发送太频繁了，等几秒再试');
-        else if (msg.indexOf('413') >= 0) toast('消息太长，发短一点');
-        else toast('发送失败，请检查网络后重试');
+        toast(describeSendError(err));
         return false;
       });
+  }
+
+  // 把失败原因说得具体一点，方便定位
+  function describeSendError(err) {
+    var m = String((err && err.message) || err || '');
+    if (m.indexOf('429') >= 0) return '发送被中转限流了（429），等 10 秒后再点消息重试';
+    if (m.indexOf('413') >= 0) return '消息太长（413），发短一点';
+    if (m.indexOf('401') >= 0 || m.indexOf('403') >= 0) return '中转拒绝了这次发送（' + m + '）';
+    if (m.indexOf('HTTP') >= 0) return '发送失败（' + m + '），点消息可重试';
+    return '发送失败（网络异常），点消息可重试';
   }
 
   function markFailed(id) {
@@ -1588,9 +1562,9 @@
     }
     seal(S.key, msg).then(publish).then(function () {
       toast('已重新发送');
-    }).catch(function () {
+    }).catch(function (err) {
       markFailed(id);
-      toast('还是发不出去，请检查网络');
+      toast(describeSendError(err));
     });
   }
 
@@ -1634,11 +1608,8 @@
     S.unread = 0;
     S.pending = 0;
     S.peerReadTs = 0;
-    S.peerTyping = false;
     S.lastIncomingTs = 0;
-    S.lastTypingSent = 0;
     S.pendingReadTs = 0;
-    clearTimeout(S.typingTimer);
     clearTimeout(S.readTimer);
     S.readTimer = null;
     updateTitle();
@@ -1719,8 +1690,6 @@
     $('joinScreen').classList.remove('is-hidden');
     S.unread = 0;
     S.pending = 0;
-    S.peerTyping = false;
-    clearTimeout(S.typingTimer);
     updateTitle();
     renderMini();
     updateJump();
@@ -1847,7 +1816,6 @@
     el.focus();
     autoGrow();
     updateCounter();
-    maybeSendTyping();
   }
 
   function toggleEmoji(force) {
@@ -1938,7 +1906,6 @@
     $('msgInput').addEventListener('input', function () {
       autoGrow();
       updateCounter();
-      if ($('msgInput').value.replace(/\s+/g, '')) maybeSendTyping();
     });
     $('msgInput').addEventListener('keydown', function (ev) {
       if (ev.key === 'Enter' && !ev.shiftKey && !ev.isComposing && ev.keyCode !== 229) {
@@ -2027,7 +1994,7 @@
     });
     $('miniItem').setAttribute('aria-checked', (pipWin && !pipWin.closed) ? 'true' : 'false');
 
-    if ($('menuNote')) $('menuNote').textContent = '版本 ' + VERSION + ' · 已读/输入已启用';
+    if ($('menuNote')) $('menuNote').textContent = '版本 ' + VERSION;
 
     $('renameItem').addEventListener('click', function () {
       hideMenu();
