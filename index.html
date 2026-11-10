@@ -291,6 +291,9 @@
       <button type="button" class="menu-item" id="soundItem" role="menuitemcheckbox" aria-checked="false">
         <span>提示音</span><i class="switch"></i>
       </button>
+      <button type="button" class="menu-item" id="miniItem" role="menuitemcheckbox" aria-checked="false">
+        <span>迷你窗口</span><i class="switch"></i>
+      </button>
       <button type="button" class="menu-item danger" id="clearBtn" role="menuitem">清空本机记录</button>
     </div>
 
@@ -484,6 +487,7 @@
     hist: [],
     saveSeq: 0,
     retry: 0,
+    unread: 0,
     connected: false,
     lastSender: '',
     lastTs: 0,
@@ -820,16 +824,146 @@
       renderMessage(msg, false, true);
       pushHist(msg);
       if (wasNear) scrollDown();
-      notifyHidden();
+      bumpUnread();
       notifyMessage(msg);
     }).catch(function () {
       addSystem('收到一条无法解密的消息（对方的房间口令可能不一致）');
     });
   }
 
-  function notifyHidden() {
-    if (!document.hidden) return;
-    document.title = '● 新消息 · 轻聊';
+  /* ------------------------------------------------------------------ */
+  /* 未读计数 + 迷你窗口                                                 */
+  /* ------------------------------------------------------------------ */
+
+  var MINI_CSS = [
+    'html,body{margin:0;height:100%;overflow:hidden;background:#111318;}',
+    'body{display:flex;align-items:center;justify-content:center;cursor:pointer;user-select:none;}',
+    '.dot{width:13px;height:13px;border-radius:50%;background:#3b4050;transition:background .15s,box-shadow .15s;}',
+    '.dot.hot{background:#ff453a;box-shadow:0 0 0 4px rgba(255,69,58,.16);}'
+  ].join('');
+
+  var pipWin = null;
+  var faviconOn = null;
+  var faviconOff = null;
+
+  function makeFavicon(withDot) {
+    try {
+      var c = document.createElement('canvas');
+      c.width = c.height = 64;
+      var x = c.getContext('2d');
+      if (!x) return null;
+      var g = x.createLinearGradient(0, 0, 64, 64);
+      g.addColorStop(0, '#5b5bd6');
+      g.addColorStop(1, '#7c3aed');
+      x.fillStyle = g;
+      var r = 14;
+      x.beginPath();
+      x.moveTo(r, 0); x.lineTo(64 - r, 0);
+      x.quadraticCurveTo(64, 0, 64, r); x.lineTo(64, 64 - r);
+      x.quadraticCurveTo(64, 64, 64 - r, 64); x.lineTo(r, 64);
+      x.quadraticCurveTo(0, 64, 0, 64 - r); x.lineTo(0, r);
+      x.quadraticCurveTo(0, 0, r, 0);
+      x.closePath(); x.fill();
+      x.fillStyle = '#fff';
+      x.beginPath();
+      x.moveTo(16, 20); x.lineTo(48, 20);
+      x.quadraticCurveTo(52, 20, 52, 24); x.lineTo(52, 38);
+      x.quadraticCurveTo(52, 42, 48, 42); x.lineTo(30, 42);
+      x.lineTo(22, 48); x.lineTo(22, 42); x.lineTo(16, 42);
+      x.quadraticCurveTo(12, 42, 12, 38); x.lineTo(12, 24);
+      x.quadraticCurveTo(12, 20, 16, 20);
+      x.closePath(); x.fill();
+      if (withDot) {
+        x.beginPath();
+        x.arc(50, 14, 13, 0, Math.PI * 2);
+        x.fillStyle = '#ff453a';
+        x.fill();
+      }
+      return c.toDataURL('image/png');
+    } catch (e) { return null; }
+  }
+
+  function setFavicon(hot) {
+    try {
+      if (!faviconOff) { faviconOff = makeFavicon(false); faviconOn = makeFavicon(true); }
+      var url = hot ? faviconOn : faviconOff;
+      if (!url) return;
+      var link = document.querySelector('link[rel="icon"]');
+      if (link) link.href = url;
+    } catch (e) { /* ignore */ }
+  }
+
+  function updateTitle() {
+    document.title = S.unread ? '(' + S.unread + ') 轻聊 · 极简网页聊天' : '轻聊 · 极简网页聊天';
+    setFavicon(S.unread > 0);
+  }
+
+  function renderMini() {
+    if (!pipWin || pipWin.closed) return;
+    var doc = pipWin.document;
+    var dot = doc.getElementById('miniDot');
+    if (!dot) return;
+    dot.className = S.unread > 0 ? 'dot hot' : 'dot';
+  }
+
+  function bumpUnread() {
+    if (!document.hidden && document.hasFocus()) return;   // 正看着就不用计数
+    S.unread++;
+    updateTitle();
+    renderMini();
+  }
+
+  function clearUnread() {
+    if (S.unread === 0) { renderMini(); return; }
+    S.unread = 0;
+    updateTitle();
+    renderMini();
+  }
+
+  function closeMini() {
+    if (pipWin && !pipWin.closed) {
+      try { pipWin.close(); } catch (e) { /* ignore */ }
+    }
+  }
+
+  function toggleMini() {
+    var supported = 'documentPictureInPicture' in window;
+    if (!supported) {
+      toast('这个浏览器不支持迷你窗口（需要 Chrome / Edge 116 以上）');
+      return;
+    }
+    if (pipWin && !pipWin.closed) {
+      closeMini();
+      return;
+    }
+    window.documentPictureInPicture.requestWindow({ width: 64, height: 40 }).then(function (win) {
+      pipWin = win;
+      $('miniItem').setAttribute('aria-checked', 'true');
+      try { win.document.title = '·'; } catch (e) { /* ignore */ }
+
+      var style = win.document.createElement('style');
+      style.textContent = MINI_CSS;
+      win.document.head.appendChild(style);
+
+      var dot = win.document.createElement('div');
+      dot.className = 'dot';
+      dot.id = 'miniDot';
+      win.document.body.appendChild(dot);
+
+      win.document.body.addEventListener('click', function () {
+        clearUnread();
+        try { window.focus(); } catch (e) { /* ignore */ }
+      });
+      win.addEventListener('pagehide', function () {
+        pipWin = null;
+        $('miniItem').setAttribute('aria-checked', 'false');
+      });
+
+      renderMini();
+      toast('小窗已打开：有未读时亮红点，点一下回到聊天');
+    }).catch(function (err) {
+      toast('迷你窗口打开失败：' + String((err && err.message) || err));
+    });
   }
 
   function teardown() {
@@ -1050,6 +1184,9 @@
     S.lastSender = '';
     S.lastTs = 0;
     S.lastBeat = 0;
+    S.unread = 0;
+    updateTitle();
+    renderMini();
     clearQuote();
     $('menu').classList.add('is-hidden');
     $('moreBtn').setAttribute('aria-expanded', 'false');
@@ -1121,7 +1258,9 @@
     $('chatScreen').style.height = '';
     $('chatScreen').classList.add('is-hidden');
     $('joinScreen').classList.remove('is-hidden');
-    document.title = '轻聊 · 极简网页聊天';
+    S.unread = 0;
+    updateTitle();
+    renderMini();
   }
 
   /* ------------------------------------------------------------------ */
@@ -1304,6 +1443,12 @@
       toast(P.sound ? '已开启提示音' : '已关闭提示音');
     });
 
+    $('miniItem').addEventListener('click', function () {
+      hideMenu();
+      toggleMini();
+    });
+    $('miniItem').setAttribute('aria-checked', (pipWin && !pipWin.closed) ? 'true' : 'false');
+
     $('clearBtn').addEventListener('click', function () {
       if (!window.confirm('清空这台电脑上保存的聊天记录？\n（对方那边不受影响，清空后无法恢复）')) return;
       clearHist();
@@ -1358,8 +1503,10 @@
     }
 
     document.addEventListener('visibilitychange', function () {
-      if (!document.hidden) document.title = '轻聊 · 极简网页聊天';
+      if (!document.hidden) clearUnread();
+      if (!document.hidden) updateTitle();
     });
+    window.addEventListener('focus', clearUnread);
 
     // 邀请链接里带口令：?room=xxx&nick=yyy&go=1
     if (q.get('go') === '1' && q.get('room') && q.get('nick')) {
