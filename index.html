@@ -1,0 +1,888 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<title>轻聊 · 极简网页聊天</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%235b5bd6'/%3E%3Cpath d='M18 22h28v16H30l-8 7v-7h-4z' fill='white'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --bg:#f4f5fb; --card:#ffffff; --ink:#1f2233; --muted:#8b90a6; --line:#e9eaf3;
+    --accent:#5b5bd6; --accent2:#7c3aed; --ok:#22c55e; --warn:#f59e0b; --bad:#ef4444;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;color:var(--ink);-webkit-font-smoothing:antialiased;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    background:
+      radial-gradient(1100px 620px at 8% -12%, #e4e7ff 0%, rgba(228,231,255,0) 62%),
+      radial-gradient(900px 560px at 96% -6%, #ffe6f4 0%, rgba(255,230,244,0) 58%),
+      var(--bg);
+  }
+  .app{min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:18px}
+  .is-hidden{display:none!important}
+
+  /* ---------- 进入房间 ---------- */
+  .card{
+    width:min(430px,100%);background:var(--card);border-radius:26px;padding:30px 26px 22px;
+    box-shadow:0 24px 60px rgba(31,34,51,.12), 0 2px 6px rgba(31,34,51,.05);
+    border:1px solid rgba(255,255,255,.8);
+  }
+  .logo{
+    width:52px;height:52px;border-radius:16px;display:flex;align-items:center;justify-content:center;
+    font-size:26px;background:linear-gradient(135deg,#5b5bd6,#7c3aed);
+    box-shadow:0 10px 22px rgba(91,91,214,.28);margin-bottom:14px;
+  }
+  .card h1{margin:0 0 6px;font-size:23px;letter-spacing:.5px}
+  .lead{margin:0 0 20px;color:var(--muted);font-size:13.5px;line-height:1.65}
+  .field{display:block;margin-bottom:14px}
+  .field>span{display:block;font-size:12.5px;color:#6b7089;margin:0 2px 6px;font-weight:600}
+  input[type=text]{
+    width:100%;height:46px;border:1px solid var(--line);background:#f8f8fd;border-radius:13px;
+    padding:0 14px;font:inherit;font-size:16px;color:var(--ink);outline:none;transition:.15s;
+  }
+  input[type=text]:focus{background:#fff;border-color:#c7c7f5;box-shadow:0 0 0 4px rgba(91,91,214,.10)}
+  .row{display:flex;gap:8px}
+  .row input{flex:1;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.3px}
+  button{font:inherit;cursor:pointer;border:0;transition:.15s;border-radius:13px}
+  .primary{
+    width:100%;height:48px;margin-top:6px;font-size:15.5px;font-weight:600;color:#fff;
+    background:linear-gradient(135deg,#5b5bd6,#7c3aed);box-shadow:0 12px 24px rgba(91,91,214,.26);
+  }
+  .primary:active{transform:translateY(1px)}
+  .primary[disabled]{opacity:.6;box-shadow:none;cursor:default}
+  .ghost{background:transparent;color:#5b6076;padding:7px 10px;font-size:13px;border-radius:10px;white-space:nowrap}
+  .ghost:hover{background:#f1f1fa;color:var(--ink)}
+  .hint{margin:14px 2px 0;font-size:12px;line-height:1.6;color:var(--muted)}
+  .err{margin:10px 2px 0;font-size:12.5px;color:var(--bad)}
+
+  /* ---------- 聊天 ---------- */
+  .chat{
+    width:min(880px,100%);height:min(calc(100dvh - 36px),920px);
+    background:var(--card);border-radius:24px;overflow:hidden;display:flex;flex-direction:column;
+    box-shadow:0 24px 60px rgba(31,34,51,.13), 0 2px 6px rgba(31,34,51,.05);
+    border:1px solid rgba(255,255,255,.8);
+  }
+  .topbar{
+    display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg,#fff,rgba(255,255,255,.92));backdrop-filter:blur(6px);
+  }
+  .who{min-width:0;flex:1}
+  .room{display:flex;align-items:center;gap:6px;font-weight:650;font-size:15px}
+  .room .lock{font-size:12px;opacity:.75}
+  .room em{font-style:normal;color:var(--muted);font-weight:500;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .stat{display:flex;align-items:center;gap:6px;margin-top:3px;font-size:12px;color:var(--muted)}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--warn);display:inline-block;flex:none}
+  .dot.online{background:var(--ok);box-shadow:0 0 0 3px rgba(34,197,94,.16)}
+  .dot.offline{background:var(--bad);box-shadow:0 0 0 3px rgba(239,68,68,.13)}
+  .dot.connecting{animation:pulse 1.2s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+  .actions{display:flex;gap:2px;flex:none}
+
+  .log{
+    flex:1;overflow-y:auto;overscroll-behavior:contain;padding:16px 16px 6px;
+    display:flex;flex-direction:column;gap:2px;scroll-behavior:smooth;
+    background:linear-gradient(180deg,#fcfcff, #fff 40%);
+  }
+  .empty{margin:auto;text-align:center;color:var(--muted);padding:24px}
+  .emptyIcon{font-size:34px;margin-bottom:8px}
+  .empty p{margin:4px 0;font-size:14px}
+  .empty .small{font-size:12px;opacity:.8}
+
+  .msg{display:flex;flex-direction:column;max-width:min(78%,560px);margin:3px 0;animation:pop .18s ease-out}
+  .msg.own{align-self:flex-end;align-items:flex-end}
+  .msg.other{align-self:flex-start;align-items:flex-start}
+  .name{font-size:12px;color:#767c93;margin:0 5px 3px}
+  .bubble{
+    padding:9px 13px;border-radius:16px;font-size:15px;line-height:1.55;
+    white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;
+  }
+  .msg.own .bubble{background:linear-gradient(135deg,#5b5bd6,#7c3aed);color:#fff;border-bottom-right-radius:6px;box-shadow:0 8px 18px rgba(91,91,214,.24)}
+  .msg.other .bubble{background:#f6f6fc;border:1px solid #ececf6;border-bottom-left-radius:6px}
+  .meta{font-size:10.5px;line-height:1.3;color:#b0b4c6;margin:3px 6px 2px}
+  .msg.failed .meta{color:var(--bad)}
+  .msg.failed .bubble{opacity:.55}
+  @keyframes pop{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+  .composer{
+    display:flex;gap:10px;align-items:flex-end;padding:12px 14px calc(12px + env(safe-area-inset-bottom));
+    border-top:1px solid var(--line);background:#fff;
+  }
+  #msgInput{
+    flex:1;resize:none;max-height:132px;min-height:46px;border:1px solid var(--line);background:#f8f8fd;
+    border-radius:16px;padding:12px 14px;font:inherit;font-size:16px;line-height:1.45;color:var(--ink);
+    outline:none;transition:.15s;
+  }
+  #msgInput:focus{background:#fff;border-color:#c7c7f5;box-shadow:0 0 0 4px rgba(91,91,214,.10)}
+  #msgInput::placeholder{color:#b3b7c9}
+  .send{width:auto;height:46px;margin:0;padding:0 20px;flex:none}
+
+  .toast{
+    position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:60;max-width:86vw;
+    background:rgba(31,34,51,.94);color:#fff;padding:10px 16px;border-radius:12px;font-size:13.5px;
+    box-shadow:0 10px 30px rgba(0,0,0,.22);text-align:center;animation:pop .16s ease-out;
+  }
+  .sys{align-self:center;font-size:12px;color:#9aa0b6;background:#f4f4fb;padding:5px 12px;border-radius:999px;margin:8px 0}
+
+  @media (max-width:700px){
+    .app{padding:0}
+    .chat{height:100dvh;border-radius:0;border:0;box-shadow:none}
+    .card{margin:16px}
+    .log{padding:14px 12px 4px}
+    .msg{max-width:86%}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- 进入房间 -->
+  <section class="card" id="joinScreen">
+    <div class="logo" aria-hidden="true">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M21 11.6c0 4.6-4 8.3-9 8.3-.9 0-1.8-.1-2.6-.4L3.4 21l1.5-4.4A8 8 0 0 1 3 11.6c0-4.6 4-8.3 9-8.3s9 3.7 9 8.3Z" fill="#fff"/>
+      </svg>
+    </div>
+    <h1>轻聊</h1>
+    <p class="lead">不用注册、不用装软件。你和对方打开同一个网页、填同一个「房间口令」，就能实时收到对方的消息。</p>
+    <form id="joinForm" autocomplete="off">
+      <label class="field">
+        <span>你的昵称</span>
+        <input type="text" id="nickInput" maxlength="12" placeholder="例如：小王">
+      </label>
+      <label class="field">
+        <span>房间口令</span>
+        <div class="row">
+          <input type="text" id="roomInput" maxlength="40" placeholder="两人必须相同" spellcheck="false">
+          <button type="button" class="ghost" id="rollBtn">换一个</button>
+        </div>
+      </label>
+      <button type="submit" class="primary" id="enterBtn">进入聊天</button>
+    </form>
+    <p class="err" id="joinErr" hidden></p>
+    <p class="hint">口令就是房间钥匙，只有口令相同的人才会进同一个房间；把口令告诉对方即可。消息在浏览器里加密后再转发，中转服务器看不到内容。</p>
+  </section>
+
+  <!-- 聊天 -->
+  <section class="chat is-hidden" id="chatScreen">
+    <header class="topbar">
+      <div class="who">
+        <div class="room"><span class="lock" id="lockIcon">🔒</span><span>房间</span><em id="roomName"></em></div>
+        <div class="stat"><i class="dot connecting" id="dot"></i><span id="statText">连接中…</span></div>
+      </div>
+      <div class="actions">
+        <button type="button" class="ghost" id="inviteBtn" title="复制邀请信息发给对方">邀请</button>
+        <button type="button" class="ghost" id="modeBtn" title="网络不通时可切换连接方式">实时</button>
+        <button type="button" class="ghost" id="leaveBtn" title="回到进入页">退出</button>
+      </div>
+    </header>
+
+    <main class="log" id="log">
+      <div class="empty" id="emptyState">
+        <div class="emptyIcon">👋</div>
+        <p>还没有消息，打个招呼吧</p>
+        <p class="small">把房间口令告诉对方，TA 在同一个网页输入后就能收到</p>
+      </div>
+    </main>
+
+    <footer class="composer">
+      <textarea id="msgInput" rows="1" maxlength="800" enterkeyhint="send" autocapitalize="off" placeholder="输入消息，Enter 发送，Shift + Enter 换行"></textarea>
+      <button type="button" class="primary send" id="sendBtn">发送</button>
+    </footer>
+  </section>
+</div>
+
+<div class="toast is-hidden" id="toast"></div>
+<noscript><p style="text-align:center;padding:20px">这个网页需要浏览器启用 JavaScript 才能使用。</p></noscript>
+
+<script>
+(function () {
+  'use strict';
+
+  var VERSION = '1.0.0';
+  var BASE = 'https://ntfy.sh';        // 消息中转（无需注册的公共服务）
+  var MAX_LEN = 800;
+  var HIST_MAX = 300;
+
+  var $ = function (id) { return document.getElementById(id); };
+
+  /* ------------------------------------------------------------------ */
+  /* 基础工具                                                           */
+  /* ------------------------------------------------------------------ */
+
+  // cyrb53：把房间口令稳定地映射成一个短串，作为中转服务上的主题名
+  function cyrb53(str, seed) {
+    var h1 = 0xdeadbeef ^ (seed || 0);
+    var h2 = 0x41c6ce57 ^ (seed || 0);
+    for (var i = 0; i < str.length; i++) {
+      var ch = str.charCodeAt(i);
+      h1 = Math.imul(h1 ^ ch, 2654435761);
+      h2 = Math.imul(h2 ^ ch, 1597334677);
+    }
+    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+    return 4294967296 * (2097151 & h2) + (h1 >>> 0);
+  }
+
+  function topicFor(room) {
+    return 'ql-' + Math.floor(cyrb53('qingliao|v1|' + String(room).trim().toLowerCase())).toString(36);
+  }
+
+  function randCode() {
+    var a = ['blue', 'green', 'happy', 'quiet', 'sunny', 'lucky', 'silver', 'warm', 'bright', 'fresh'];
+    var b = ['tiger', 'panda', 'river', 'cloud', 'moon', 'star', 'leaf', 'bird', 'rock', 'wind'];
+    var pick = function (arr) { return arr[Math.floor(Math.random() * arr.length)]; };
+    return pick(a) + '-' + pick(b) + '-' + Math.floor(1000 + Math.random() * 9000);
+  }
+
+  function uid() {
+    try {
+      if (window.crypto && window.crypto.randomUUID) return window.crypto.randomUUID();
+    } catch (e) { /* ignore */ }
+    return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+  }
+
+  function pad2(n) { return n < 10 ? '0' + n : '' + n; }
+
+  function fmtTime(ts) {
+    var d = new Date(ts || Date.now());
+    var now = new Date();
+    var hm = pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+    var sameDay = d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+    return sameDay ? hm : (pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()) + ' ' + hm);
+  }
+
+  var toastTimer = null;
+  function toast(msg) {
+    var el = $('toast');
+    el.textContent = msg;
+    el.classList.remove('is-hidden');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.classList.add('is-hidden'); }, 2600);
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* 端到端加密（WebCrypto 不可用时自动降级为明文）                        */
+  /* ------------------------------------------------------------------ */
+
+  var HAS_CRYPTO = !!(window.crypto && window.crypto.subtle && window.TextEncoder);
+  var TE = window.TextEncoder ? new TextEncoder() : null;
+  var TD = window.TextDecoder ? new TextDecoder() : null;
+
+  function toB64(bytes) {
+    var out = '';
+    var CH = 0x8000;
+    for (var i = 0; i < bytes.length; i += CH) {
+      out += String.fromCharCode.apply(null, bytes.subarray(i, i + CH));
+    }
+    return btoa(out);
+  }
+
+  function fromB64(str) {
+    var raw = atob(str);
+    var bytes = new Uint8Array(raw.length);
+    for (var i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+    return bytes;
+  }
+
+  function makeKey(room) {
+    return window.crypto.subtle
+      .importKey('raw', TE.encode('qingliao|' + String(room).trim().toLowerCase()), 'PBKDF2', false, ['deriveKey'])
+      .then(function (base) {
+        return window.crypto.subtle.deriveKey(
+          { name: 'PBKDF2', salt: TE.encode('qingliao-salt-v1'), iterations: 120000, hash: 'SHA-256' },
+          base,
+          { name: 'AES-GCM', length: 256 },
+          false,
+          ['encrypt', 'decrypt']
+        );
+      });
+  }
+
+  function seal(key, obj) {
+    var json = JSON.stringify(obj);
+    if (!key) return Promise.resolve('p:' + toB64(TE.encode(json)));
+    var iv = window.crypto.getRandomValues(new Uint8Array(12));
+    return window.crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, key, TE.encode(json)).then(function (ct) {
+      return 'e:' + toB64(iv) + '.' + toB64(new Uint8Array(ct));
+    });
+  }
+
+  function unseal(key, payload) {
+    if (typeof payload !== 'string' || payload.length < 3) return Promise.reject(new Error('bad payload'));
+    if (payload.slice(0, 2) === 'p:') {
+      return Promise.resolve(JSON.parse(TD.decode(fromB64(payload.slice(2)))));
+    }
+    if (payload.slice(0, 2) !== 'e:') return Promise.reject(new Error('unknown format'));
+    if (!key) return Promise.reject(new Error('no key'));
+    var rest = payload.slice(2);
+    var dot = rest.indexOf('.');
+    if (dot < 0) return Promise.reject(new Error('bad envelope'));
+    var iv = fromB64(rest.slice(0, dot));
+    var ct = fromB64(rest.slice(dot + 1));
+    return window.crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv }, key, ct).then(function (pt) {
+      return JSON.parse(TD.decode(new Uint8Array(pt)));
+    });
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* 运行时状态                                                          */
+  /* ------------------------------------------------------------------ */
+
+  var S = {
+    nick: '', room: '', topic: '', key: null,
+    es: null, pollTimer: null, reconnectTimer: null,
+    mode: 'sse',                 // sse | poll
+    cursor: '',                  // 最后一条消息 id
+    startedAt: 0,
+    seen: Object.create(null),
+    hist: [],
+    retry: 0,
+    connected: false,
+    lastSender: '',
+    lastTs: 0,
+    entered: false
+  };
+
+  function setStatus(kind, text) {
+    var dot = $('dot');
+    dot.className = 'dot ' + kind;
+    $('statText').textContent = text;
+    S.connected = kind === 'online';
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* 记录（本地保存，刷新不丢）                                           */
+  /* ------------------------------------------------------------------ */
+
+  function histKey() { return 'ql.hist.' + S.topic; }
+
+  function saveHist() {
+    try { localStorage.setItem(histKey(), JSON.stringify(S.hist)); } catch (e) { /* ignore */ }
+  }
+
+  function loadHist() {
+    S.hist = [];
+    try {
+      var raw = localStorage.getItem(histKey());
+      if (raw) {
+        var arr = JSON.parse(raw);
+        if (Object.prototype.toString.call(arr) === '[object Array]') S.hist = arr.slice(-HIST_MAX);
+      }
+    } catch (e) { S.hist = []; }
+  }
+
+  function pushHist(msg) {
+    S.hist.push(msg);
+    if (S.hist.length > HIST_MAX) S.hist.splice(0, S.hist.length - HIST_MAX);
+    saveHist();
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* 界面：消息渲染                                                       */
+  /* ------------------------------------------------------------------ */
+
+  function nearBottom() {
+    var el = $('log');
+    return el.scrollHeight - el.scrollTop - el.clientHeight < 90;
+  }
+
+  function scrollDown() {
+    var el = $('log');
+    requestAnimationFrame(function () { el.scrollTop = el.scrollHeight; });
+  }
+
+  function addSystem(text) {
+    var el = document.createElement('div');
+    el.className = 'sys';
+    el.textContent = text;
+    $('log').appendChild(el);
+    scrollDown();
+  }
+
+  function renderMessage(msg, own, animate) {
+    var empty = $('emptyState');
+    if (empty) empty.classList.add('is-hidden');
+
+    var wrap = document.createElement('div');
+    wrap.className = 'msg ' + (own ? 'own' : 'other');
+    if (animate === false) wrap.style.animation = 'none';
+    if (msg.id) wrap.setAttribute('data-id', msg.id);
+
+    var gap = msg.ts && S.lastTs ? (msg.ts - S.lastTs) : 0;
+    var showName = !own && (S.lastSender !== msg.n || gap > 5 * 60 * 1000);
+
+    if (showName) {
+      var name = document.createElement('div');
+      name.className = 'name';
+      name.textContent = msg.n || '对方';
+      wrap.appendChild(name);
+    }
+
+    var bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.textContent = msg.t;             // 纯文本，天然防注入
+    wrap.appendChild(bubble);
+
+    var meta = document.createElement('div');
+    meta.className = 'meta';
+    meta.textContent = fmtTime(msg.ts);
+    wrap.appendChild(meta);
+
+    $('log').appendChild(wrap);
+
+    S.lastSender = own ? '' : (msg.n || '对方');
+    S.lastTs = msg.ts || Date.now();
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* 网络：接收                                                          */
+  /* ------------------------------------------------------------------ */
+
+  function handleRaw(text) {
+    var raw;
+    try { raw = JSON.parse(text); } catch (e) { return; }
+    if (!raw || raw.event !== 'message' || typeof raw.message !== 'string') return;
+    if (raw.id && S.seen[raw.id]) return;
+    if (raw.id) {
+      S.seen[raw.id] = 1;
+      S.cursor = raw.id;
+    }
+
+    return unseal(S.key, raw.message).then(function (env) {
+      if (!env || typeof env.t !== 'string' || !env.t) return;
+      if (env.id && S.seen[env.id]) return;
+      if (env.id) S.seen[env.id] = 1;
+
+      var msg = {
+        id: env.id || raw.id || uid(),
+        n: String(env.n || '对方').slice(0, 24),
+        t: String(env.t).slice(0, MAX_LEN),
+        ts: Number(env.ts) || (raw.time ? raw.time * 1000 : Date.now())
+      };
+      var wasNear = nearBottom();
+      renderMessage(msg, false, true);
+      pushHist(msg);
+      if (wasNear) scrollDown();
+      notifyHidden();
+    }).catch(function () {
+      addSystem('收到一条无法解密的消息（对方的房间口令可能不一致）');
+    });
+  }
+
+  function notifyHidden() {
+    if (!document.hidden) return;
+    document.title = '● 新消息 · 轻聊';
+  }
+
+  function teardown() {
+    if (S.es) {
+      try { S.es.close(); } catch (e) { /* ignore */ }
+      S.es = null;
+    }
+    if (S.pollTimer) { clearInterval(S.pollTimer); S.pollTimer = null; }
+    if (S.reconnectTimer) { clearTimeout(S.reconnectTimer); S.reconnectTimer = null; }
+  }
+
+  function scheduleReconnect() {
+    if (!S.entered || S.reconnectTimer) return;
+    var wait = Math.min(15000, 1200 * Math.pow(1.7, S.retry++));
+    setStatus('offline', '已断开，' + Math.round(wait / 1000) + ' 秒后重连…');
+    S.reconnectTimer = setTimeout(function () {
+      S.reconnectTimer = null;
+      connect();
+    }, wait);
+  }
+
+  function connect() {
+    if (!S.entered) return;
+    teardown();
+    var since = S.cursor || Math.floor(S.startedAt / 1000);
+
+    if (S.mode === 'poll') {
+      setStatus('connecting', '连接中…');
+      pollOnce();
+      S.pollTimer = setInterval(pollOnce, 2500);
+      return;
+    }
+
+    setStatus('connecting', '连接中…');
+    var url = BASE + '/' + encodeURIComponent(S.topic) + '/sse?since=' + encodeURIComponent(since);
+    var es;
+    try {
+      es = new EventSource(url);
+    } catch (e) {
+      setStatus('offline', '无法连接');
+      scheduleReconnect();
+      return;
+    }
+    S.es = es;
+
+    es.onopen = function () {
+      S.retry = 0;
+      setStatus('online', '已连接');
+    };
+    es.onmessage = function (ev) { handleRaw(ev.data); };
+    es.onerror = function () {
+      if (es.readyState === 2) {          // CLOSED：浏览器已经放弃自动重连
+        teardown();
+        scheduleReconnect();
+      } else {
+        setStatus('offline', '已断开，正在重连…');
+      }
+    };
+  }
+
+  function pollOnce() {
+    if (S.mode !== 'poll' || !S.entered) return;
+    var since = S.cursor || Math.floor(S.startedAt / 1000);
+    var url = BASE + '/' + encodeURIComponent(S.topic) + '/json?poll=1&since=' + encodeURIComponent(since);
+    fetch(url, { cache: 'no-store' })
+      .then(function (res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.text();
+      })
+      .then(function (text) {
+        setStatus('online', '已连接（兼容模式）');
+        S.retry = 0;
+        var lines = text.split('\n');
+        for (var i = 0; i < lines.length; i++) {
+          if (lines[i].trim()) handleRaw(lines[i]);
+        }
+      })
+      .catch(function () {
+        setStatus('offline', '连接中断，正在重试…');
+      });
+  }
+
+  function publish(body) {
+    var ctrl = null;
+    var opts = {
+      method: 'POST',
+      body: body,
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      cache: 'no-store'
+    };
+    try {
+      ctrl = new AbortController();
+      opts.signal = ctrl.signal;
+      setTimeout(function () { if (ctrl) ctrl.abort(); }, 12000);
+    } catch (e) { /* 老浏览器忽略超时 */ }
+
+    return fetch(BASE + '/' + encodeURIComponent(S.topic), opts).then(function (res) {
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return true;
+    });
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* 网络：发送                                                          */
+  /* ------------------------------------------------------------------ */
+
+  function sendMessage(text) {
+    if (!S.entered) return Promise.resolve(false);
+    text = String(text == null ? '' : text).replace(/^\s+|\s+$/g, '').slice(0, MAX_LEN);
+    if (!text) return Promise.resolve(false);
+
+    var env = { v: 1, id: uid(), n: S.nick, t: text, ts: Date.now() };
+    S.seen[env.id] = 1;
+
+    renderMessage(env, true, true);
+    pushHist(env);
+
+    return seal(S.key, env)
+      .then(publish)
+      .then(function () {
+        if (S.mode === 'sse' && S.es && S.es.readyState === 1) setStatus('online', '已连接');
+        return true;
+      })
+      .catch(function (err) {
+        markFailed(env.id);
+        var msg = String(err && err.message || err);
+        if (msg.indexOf('429') >= 0) toast('发送太频繁了，等几秒再试');
+        else if (msg.indexOf('413') >= 0) toast('消息太长，发短一点');
+        else toast('发送失败，请检查网络后重试');
+        return false;
+      });
+  }
+
+  function markFailed(id) {
+    var el = $('log').querySelector('[data-id="' + id + '"]');
+    if (!el) return;
+    el.classList.add('failed');
+    var meta = el.querySelector('.meta');
+    if (meta) meta.textContent = '未发送（点击重试）';
+    el.style.cursor = 'pointer';
+    el.addEventListener('click', function () { retry(id); }, { once: true });
+  }
+
+  function retry(id) {
+    var msg = null;
+    for (var i = 0; i < S.hist.length; i++) if (S.hist[i].id === id) msg = S.hist[i];
+    if (!msg) return;
+    var el = $('log').querySelector('[data-id="' + id + '"]');
+    if (el) {
+      el.classList.remove('failed');
+      var meta = el.querySelector('.meta');
+      if (meta) meta.textContent = fmtTime(msg.ts);
+    }
+    seal(S.key, msg).then(publish).then(function () {
+      toast('已重新发送');
+    }).catch(function () {
+      markFailed(id);
+      toast('还是发不出去，请检查网络');
+    });
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* 进入 / 退出                                                         */
+  /* ------------------------------------------------------------------ */
+
+  function showJoinError(text) {
+    var el = $('joinErr');
+    if (!text) { el.hidden = true; return; }
+    el.textContent = text;
+    el.hidden = false;
+  }
+
+  function enter() {
+    if (S.entered) return;
+    var nick = $('nickInput').value.replace(/^\s+|\s+$/g, '').slice(0, 12);
+    var room = $('roomInput').value.replace(/^\s+|\s+$/g, '');
+
+    if (!nick) { showJoinError('请先填一个昵称'); $('nickInput').focus(); return; }
+    if (room.length < 2) { showJoinError('房间口令至少 2 个字符'); $('roomInput').focus(); return; }
+
+    showJoinError('');
+    $('enterBtn').disabled = true;
+    $('enterBtn').textContent = '正在进入…';
+
+    S.nick = nick;
+    S.room = room;
+    S.topic = topicFor(room);
+    S.startedAt = Date.now();
+    S.cursor = '';
+    S.seen = Object.create(null);
+    S.entered = true;
+    S.retry = 0;
+    S.lastSender = '';
+    S.lastTs = 0;
+
+    try {
+      localStorage.setItem('ql.nick', nick);
+      localStorage.setItem('ql.room', room);
+      var h = JSON.parse(localStorage.getItem('ql.histCount') || '{}');
+      if (h && typeof h === 'object') { h[S.topic] = 1; localStorage.setItem('ql.histCount', JSON.stringify(h)); }
+    } catch (e) { /* ignore */ }
+
+    $('roomName').textContent = room;
+
+    var ready = HAS_CRYPTO
+      ? makeKey(room).then(function (k) { S.key = k; }).catch(function () { S.key = null; })
+      : Promise.resolve();
+
+    ready.then(function () {
+      $('lockIcon').textContent = S.key ? '🔒' : '🔓';
+      $('lockIcon').title = S.key ? '消息已端到端加密' : '当前浏览器不支持加密，消息为明文';
+      $('joinScreen').classList.add('is-hidden');
+      $('chatScreen').classList.remove('is-hidden');
+      $('enterBtn').disabled = false;
+      $('enterBtn').textContent = '进入聊天';
+
+      var logEl = $('log');
+      var emptyEl = $('emptyState');
+      while (logEl.firstChild) logEl.removeChild(logEl.firstChild);
+      emptyEl.classList.remove('is-hidden');
+      logEl.appendChild(emptyEl);
+
+      loadHist();
+      for (var i = 0; i < S.hist.length; i++) renderMessage(S.hist[i], S.hist[i].n === S.nick, false);
+      if (S.hist.length) {
+        addSystem('以上是这台电脑上保存的历史消息');
+        scrollDown();
+      }
+      if (!HAS_CRYPTO) toast('浏览器不支持加密，消息将以明文发送');
+      connect();
+      var touchOnly = false;
+      try { touchOnly = window.matchMedia('(hover: none)').matches; } catch (e) { /* ignore */ }
+      if (!touchOnly) setTimeout(function () { $('msgInput').focus(); }, 60);
+    });
+  }
+
+  function leave() {
+    S.entered = false;
+    teardown();
+    S.es = null;
+    setStatus('offline', '已退出');
+    $('chatScreen').classList.add('is-hidden');
+    $('joinScreen').classList.remove('is-hidden');
+    document.title = '轻聊 · 极简网页聊天';
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* 复制 / 邀请                                                         */
+  /* ------------------------------------------------------------------ */
+
+  function copyText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(text).then(function () { return true; }, function () { return legacyCopy(text); });
+    }
+    return Promise.resolve(legacyCopy(text));
+  }
+
+  function legacyCopy(text) {
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      var ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      return ok;
+    } catch (e) { return false; }
+  }
+
+  function inviteText() {
+    var here = location.href.split('#')[0].split('?')[0];
+    if (/^https?:/i.test(here)) {
+      return '来「轻聊」和我聊天：\n' + here + '\n房间口令：' + S.room + '\n（打开后填个昵称就能进）';
+    }
+    return '来「轻聊」和我聊天：\n打开我发给你的 qingliao-chat.html\n房间口令：' + S.room + '\n（填个昵称就能进）';
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* 输入框                                                              */
+  /* ------------------------------------------------------------------ */
+
+  function autoGrow() {
+    var el = $('msgInput');
+    el.style.height = 'auto';
+    el.style.height = Math.min(132, el.scrollHeight) + 'px';
+  }
+
+  function submitInput() {
+    var el = $('msgInput');
+    var text = el.value;
+    if (!text.replace(/\s+/g, '')) return;
+    el.value = '';
+    autoGrow();
+    sendMessage(text);
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* 启动                                                               */
+  /* ------------------------------------------------------------------ */
+
+  function boot() {
+    if (!$('joinScreen')) return;   // 非正式页面（例如测试页）不启动界面
+
+    var q = new URLSearchParams(location.search);
+    var savedNick = '';
+    var savedRoom = '';
+    try {
+      savedNick = localStorage.getItem('ql.nick') || '';
+      savedRoom = localStorage.getItem('ql.room') || '';
+    } catch (e) { /* ignore */ }
+
+    $('nickInput').value = q.get('nick') || savedNick;
+    $('roomInput').value = q.get('room') || savedRoom || randCode();
+
+    $('rollBtn').addEventListener('click', function () {
+      $('roomInput').value = randCode();
+      $('roomInput').focus();
+    });
+
+    $('joinForm').addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      enter();
+    });
+
+    $('sendBtn').addEventListener('click', submitInput);
+
+    $('msgInput').addEventListener('input', autoGrow);
+    $('msgInput').addEventListener('keydown', function (ev) {
+      if (ev.key === 'Enter' && !ev.shiftKey && !ev.isComposing && ev.keyCode !== 229) {
+        ev.preventDefault();
+        submitInput();
+      }
+    });
+
+    $('inviteBtn').addEventListener('click', function () {
+      copyText(inviteText()).then(function (ok) {
+        toast(ok ? '邀请信息已复制，粘贴给对方即可' : '复制失败，请手动记下房间口令：' + S.room);
+      });
+    });
+
+    $('modeBtn').addEventListener('click', function () {
+      S.mode = S.mode === 'sse' ? 'poll' : 'sse';
+      $('modeBtn').textContent = S.mode === 'sse' ? '实时' : '兼容';
+      $('modeBtn').title = S.mode === 'sse' ? '当前为实时推送，点击可切换兼容模式' : '当前为每 3 秒拉取，点击可切回实时推送';
+      toast(S.mode === 'sse' ? '已切换为实时推送' : '已切换为兼容模式（网络受限时更稳）');
+      if (S.entered) connect();
+    });
+
+    $('leaveBtn').addEventListener('click', function () {
+      if (S.entered && !window.confirm('退出当前房间？')) return;
+      leave();
+    });
+
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden) document.title = '轻聊 · 极简网页聊天';
+    });
+
+    // 邀请链接里带口令：?room=xxx&nick=yyy&go=1
+    if (q.get('go') === '1' && q.get('room') && q.get('nick')) {
+      enter();
+    } else if (q.get('room')) {
+      $('nickInput').focus();
+    }
+
+    if (S.mode === 'sse') $('modeBtn').textContent = '实时';
+
+    // 窄屏用短提示，避免 placeholder 换行被裁掉
+    var fitPlaceholder = function () {
+      if (!$('msgInput')) return;
+      $('msgInput').placeholder = window.innerWidth < 620
+        ? '输入消息…'
+        : '输入消息，Enter 发送，Shift + Enter 换行';
+    };
+    fitPlaceholder();
+    window.addEventListener('resize', fitPlaceholder);
+  }
+
+  // 调试/自测入口（正常使用不受影响）
+  window.__ql = {
+    version: VERSION,
+    topicFor: topicFor,
+    seal: seal,
+    unseal: unseal,
+    makeKey: makeKey,
+    hasCrypto: function () { return HAS_CRYPTO; },
+    state: S,
+    send: sendMessage,
+    feed: handleRaw,
+    enter: enter
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () {
+      try { boot(); } catch (e) {
+        document.body.innerHTML = '<pre style="padding:20px;color:#b91c1c">页面启动失败：' + String(e && e.message || e) + '</pre>';
+      }
+    });
+  } else {
+    try { boot(); } catch (e) {
+      document.body.innerHTML = '<pre style="padding:20px;color:#b91c1c">页面启动失败：' + String(e && e.message || e) + '</pre>';
+    }
+  }
+})();
+</script>
+</body>
+</html>
