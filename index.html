@@ -410,7 +410,7 @@
 (function () {
   'use strict';
 
-  var VERSION = '3.1.0';
+  var VERSION = '3.1.1';
   var MQTT_URL = 'wss://broker-cn.emqx.io:8084/mqtt';   // EMQX 国内公共节点
   var MAX_LEN = 800;
   var HIST_MAX = 300;
@@ -1159,14 +1159,20 @@
 
   function renderMini() {
     if (!pipWin || pipWin.closed) return;
-    var dot = pipWin.document.getElementById('miniDot');
+    var doc = pipWin.document;
+    var dot = doc.getElementById('miniDot');
+    var ring = doc.getElementById('miniRing');
     if (!dot) return;
     if (S.unread > 0) {
-      dot.style.background = '#ff453a';
-      dot.style.boxShadow = '0 0 0 4px rgba(255,69,58,.16)';
+      dot.style.background = '#f2b01e';
+      dot.style.boxShadow = '0 0 0 5px rgba(242,176,30,.14)';
+      dot.className = 'on';
+      if (ring) ring.className = 'on';
     } else {
       dot.style.background = '#3b4050';
       dot.style.boxShadow = 'none';
+      dot.className = '';
+      if (ring) ring.className = '';
     }
   }
 
@@ -1212,8 +1218,8 @@
   function positionMiniDot() {
     if (!pipWin || pipWin.closed) return;
     var win = pipWin;
-    var dot = win.document.getElementById('miniDot');
-    if (!dot) return;
+    var anchor = win.document.getElementById('miniAnchor');
+    if (!anchor) return;
 
     var iw = win.innerWidth || 0;
     var ih = win.innerHeight || 0;
@@ -1254,8 +1260,8 @@
     cx = Math.min(Math.max(cx, 9), Math.max(9, iw - 9));
     cy = Math.min(Math.max(cy, 9), Math.max(9, ih - 9));
 
-    dot.style.left = Math.round(cx) + 'px';
-    dot.style.top = Math.round(cy) + 'px';
+    anchor.style.left = Math.round(cx) + 'px';
+    anchor.style.top = Math.round(cy) + 'px';
   }
 
   function toggleMini() {
@@ -1285,11 +1291,32 @@
       var wrap = doc.createElement('div');
       wrap.id = 'miniWrap';
       wrap.style.cssText = 'position:fixed;left:0;top:0;right:0;bottom:0;background:#111318;cursor:pointer;-webkit-user-select:none;user-select:none;overflow:hidden;';
+
+      // 锚点：位置由 positionMiniDot 计算；呼吸/扩散动画只作用于里面的点，不影响定位
+      var anchor = doc.createElement('div');
+      anchor.id = 'miniAnchor';
+      anchor.style.cssText = 'position:absolute;left:50%;top:50%;width:0;height:0;';
+
+      var ring = doc.createElement('div');
+      ring.id = 'miniRing';
+      ring.style.cssText = 'position:absolute;left:-7px;top:-7px;width:14px;height:14px;border-radius:50%;border:2px solid rgba(242,176,30,.75);opacity:0;box-sizing:border-box;';
+
       var dot = doc.createElement('div');
       dot.id = 'miniDot';
-      dot.style.cssText = 'position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:13px;height:13px;border-radius:50%;background:#3b4050;transition:background .15s,box-shadow .15s;';
-      wrap.appendChild(dot);
+      dot.style.cssText = 'position:absolute;left:-7px;top:-7px;width:14px;height:14px;border-radius:50%;background:#3b4050;transition:background .2s,box-shadow .2s;';
+
+      anchor.appendChild(ring);
+      anchor.appendChild(dot);
+      wrap.appendChild(anchor);
       doc.body.appendChild(wrap);
+
+      var style = doc.createElement('style');
+      style.textContent =
+        '@keyframes qlBreathe{0%,100%{transform:scale(1)}50%{transform:scale(1.18)}}' +
+        '@keyframes qlRipple{0%{transform:scale(1);opacity:.75}100%{transform:scale(2.7);opacity:0}}' +
+        '#miniDot.on{animation:qlBreathe 2s ease-in-out infinite}' +
+        '#miniRing.on{animation:qlRipple 2s ease-out infinite}';
+      (doc.head || doc.documentElement).appendChild(style);
 
       wrap.addEventListener('click', function () {
         clearUnread();
@@ -1306,7 +1333,7 @@
       });
 
       renderMini();
-      toast('小窗已打开：有未读时亮红点，点一下回到聊天');
+      toast('小窗已打开：有未读时黄灯呼吸，点一下回到聊天');
     }).catch(function (err) {
       toast('迷你窗口打开失败：' + String((err && err.message) || err));
     });
