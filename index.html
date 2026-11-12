@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>QINGLIAO</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%235b5bd6'/%3E%3Cpath d='M18 22h28v16H30l-8 7v-7h-4z' fill='white'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232f5d50'/%3E%3Cpath d='M18 22h28v16H30l-8 7v-7h-4z' fill='white'/%3E%3C/svg%3E">
 <style>
   :root{
-    --bg:#f4f5fb; --card:#ffffff; --ink:#1f2233; --muted:#8b90a6; --line:#e9eaf3;
-    --accent:#5b5bd6; --accent2:#7c3aed; --ok:#22c55e; --warn:#f59e0b; --bad:#ef4444;
+    --bg:#f6f1e7; --card:#fffdf7; --ink:#3a322a; --muted:#8a7f6e; --line:#e6dccb;
+    --accent:#2f5d50; --accent2:#3f7a68; --ok:#3f8a5f; --warn:#c98a1e; --bad:#b3402e;
   }
   *{box-sizing:border-box}
   html,body{height:100%}
@@ -17,59 +17,59 @@
     margin:0;color:var(--ink);-webkit-font-smoothing:antialiased;
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
     background:
-      radial-gradient(1100px 620px at 8% -12%, #e4e7ff 0%, rgba(228,231,255,0) 62%),
-      radial-gradient(900px 560px at 96% -6%, #ffe6f4 0%, rgba(255,230,244,0) 58%),
+      radial-gradient(1100px 620px at 8% -12%, #efe6d4 0%, rgba(239,230,212,0) 62%),
+      radial-gradient(900px 560px at 96% -6%, #f3e6d3 0%, rgba(243,230,211,0) 58%),
       var(--bg);
   }
   .app{min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:18px}
   .is-hidden{display:none!important}
 
-  /* ---------- 进入房间 ---------- */
+  /* 进入房间 */
   .card{
-    width:min(430px,100%);background:var(--card);border-radius:26px;padding:30px 26px 22px;
-    box-shadow:0 24px 60px rgba(31,34,51,.12), 0 2px 6px rgba(31,34,51,.05);
-    border:1px solid rgba(255,255,255,.8);
+    width:min(430px,100%);background:var(--card);border-radius:16px;padding:30px 26px 22px;
+    box-shadow:0 18px 46px rgba(74,60,40,.10), 0 2px 6px rgba(74,60,40,.05);
+    border:1px solid #e4d9c6;
   }
   .logo{
-    width:52px;height:52px;border-radius:16px;display:flex;align-items:center;justify-content:center;
-    font-size:26px;background:linear-gradient(135deg,#5b5bd6,#7c3aed);
-    box-shadow:0 10px 22px rgba(91,91,214,.28);margin-bottom:14px;
+    width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(135deg,#2f5d50,#4d8a74);
+    box-shadow:0 10px 22px rgba(47,93,80,.24);margin-bottom:14px;
   }
   .card h1{margin:0 0 6px;font-size:23px;letter-spacing:.5px}
   .lead{margin:0 0 20px;color:var(--muted);font-size:13.5px;line-height:1.65}
   .field{display:block;margin-bottom:14px}
-  .field>span{display:block;font-size:12.5px;color:#6b7089;margin:0 2px 6px;font-weight:600}
+  .field>span{display:block;font-size:12.5px;color:#6d6558;margin:0 2px 6px;font-weight:600}
   input[type=text]{
-    width:100%;height:46px;border:1px solid var(--line);background:#f8f8fd;border-radius:13px;
+    width:100%;height:46px;border:1px solid var(--line);background:#f3ecdf;border-radius:11px;
     padding:0 14px;font:inherit;font-size:16px;color:var(--ink);outline:none;transition:.15s;
   }
-  input[type=text]:focus{background:#fff;border-color:#c7c7f5;box-shadow:0 0 0 4px rgba(91,91,214,.10)}
-  .check{display:flex;align-items:center;gap:7px;margin:-2px 2px 14px;font-size:12.5px;color:#6b7089;cursor:pointer;user-select:none}
-  .check input{width:15px;height:15px;accent-color:#5b5bd6;margin:0;cursor:pointer;flex:none}
+  input[type=text]:focus{background:#fffdf7;border-color:#b9cfc5;box-shadow:0 0 0 4px rgba(47,93,80,.12)}
+  .check{display:flex;align-items:center;gap:7px;margin:-2px 2px 14px;font-size:12.5px;color:#6d6558;cursor:pointer;user-select:none}
+  .check input{width:15px;height:15px;accent-color:#2f5d50;margin:0;cursor:pointer;flex:none}
   .row{display:flex;gap:8px}
   .row input{flex:1;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.3px}
-  button{font:inherit;cursor:pointer;border:0;transition:.15s;border-radius:13px}
+  button{font:inherit;cursor:pointer;border:0;transition:.15s;border-radius:11px}
   .primary{
-    width:100%;height:48px;margin-top:6px;font-size:15.5px;font-weight:600;color:#fff;
-    background:linear-gradient(135deg,#5b5bd6,#7c3aed);box-shadow:0 12px 24px rgba(91,91,214,.26);
+    width:100%;height:48px;margin-top:6px;font-size:15.5px;font-weight:600;color:#f7f2e8;
+    background:linear-gradient(135deg,#2f5d50,#3f7a68);box-shadow:0 10px 22px rgba(47,93,80,.22);
   }
   .primary:active{transform:translateY(1px)}
   .primary[disabled]{opacity:.6;box-shadow:none;cursor:default}
-  .ghost{background:transparent;color:#5b6076;padding:7px 10px;font-size:13px;border-radius:10px;white-space:nowrap}
-  .ghost:hover{background:#f1f1fa;color:var(--ink)}
+  .ghost{background:transparent;color:#6d6558;padding:7px 10px;font-size:13px;border-radius:9px;white-space:nowrap}
+  .ghost:hover{background:#f0e8da;color:var(--ink)}
   .hint{margin:14px 2px 0;font-size:12px;line-height:1.6;color:var(--muted)}
   .err{margin:10px 2px 0;font-size:12.5px;color:var(--bad)}
 
-  /* ---------- 聊天 ---------- */
+  /* 聊天 */
   .chat{
     width:min(880px,100%);height:min(calc(100dvh - 36px),920px);position:relative;
-    background:var(--card);border-radius:24px;overflow:hidden;display:flex;flex-direction:column;
-    box-shadow:0 24px 60px rgba(31,34,51,.13), 0 2px 6px rgba(31,34,51,.05);
-    border:1px solid rgba(255,255,255,.8);
+    background:var(--card);border-radius:18px;overflow:hidden;display:flex;flex-direction:column;
+    box-shadow:0 18px 46px rgba(74,60,40,.12), 0 2px 6px rgba(74,60,40,.05);
+    border:1px solid #e4d9c6;
   }
   .topbar{
     display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line);
-    background:linear-gradient(180deg,#fff,rgba(255,255,255,.92));backdrop-filter:blur(6px);
+    background:linear-gradient(180deg,#fffdf7,rgba(255,253,247,.94));backdrop-filter:blur(6px);
   }
   .who{min-width:0;flex:1}
   .room{display:flex;align-items:center;gap:6px;font-weight:650;font-size:15px}
@@ -77,8 +77,8 @@
   .room em{font-style:normal;color:var(--muted);font-weight:500;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .stat{display:flex;align-items:center;gap:6px;margin-top:3px;font-size:12px;color:var(--muted)}
   .dot{width:8px;height:8px;border-radius:50%;background:var(--warn);display:inline-block;flex:none}
-  .dot.online{background:var(--ok);box-shadow:0 0 0 3px rgba(34,197,94,.16)}
-  .dot.offline{background:var(--bad);box-shadow:0 0 0 3px rgba(239,68,68,.13)}
+  .dot.online{background:var(--ok);box-shadow:0 0 0 3px rgba(63,138,95,.16)}
+  .dot.offline{background:var(--bad);box-shadow:0 0 0 3px rgba(179,64,46,.13)}
   .dot.connecting{animation:pulse 1.2s ease-in-out infinite}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
   .actions{display:flex;gap:2px;flex:none}
@@ -88,14 +88,14 @@
   .log{
     flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:16px 16px 6px;
     display:flex;flex-direction:column;gap:2px;scroll-behavior:smooth;
-    background:linear-gradient(180deg,#fcfcff, #fff 40%);
+    background:linear-gradient(180deg,#fbf7ee, #fffdf7 40%);
   }
   .jump{
     position:absolute;left:50%;bottom:14px;transform:translateX(-50%);z-index:6;
     display:inline-flex;align-items:center;gap:4px;white-space:nowrap;
-    background:linear-gradient(135deg,#5b5bd6,#7c3aed);color:#fff;
+    background:linear-gradient(135deg,#2f5d50,#3f7a68);color:#f7f2e8;
     font-size:12.5px;font-weight:600;padding:7px 14px;border-radius:999px;
-    box-shadow:0 10px 24px rgba(91,91,214,.34);
+    box-shadow:0 10px 24px rgba(47,93,80,.28);
   }
   .jump:hover{filter:brightness(1.06)}
   .jump:active{transform:translateX(-50%) translateY(1px)}
@@ -103,122 +103,110 @@
   .emptyIcon{font-size:34px;margin-bottom:8px}
   .empty p{margin:4px 0;font-size:14px}
   .empty .small{font-size:12px;opacity:.8}
+  .sys{align-self:center;font-size:12px;color:#a99f8e;background:#f2ead9;padding:5px 12px;border-radius:999px;margin:8px 0}
 
-  .msg{display:flex;flex-direction:column;max-width:min(78%,560px);margin:3px 0;animation:pop .18s ease-out}
+  .msg{display:flex;flex-direction:column;max-width:min(78%,560px);margin:3px 0;animation:pop .18s ease-out;position:relative}
   .msg.own{align-self:flex-end;align-items:flex-end}
   .msg.other{align-self:flex-start;align-items:flex-start}
-  .name{font-size:12px;color:#767c93;margin:0 5px 3px}
+  .name{font-size:12px;color:#7d7466;margin:0 5px 3px}
   .bubble{
-    padding:9px 13px;border-radius:16px;font-size:15px;line-height:1.55;
+    padding:9px 13px;border-radius:14px;font-size:15px;line-height:1.55;
     white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;
   }
-  .msg.own .bubble{background:linear-gradient(135deg,#5b5bd6,#7c3aed);color:#fff;border-bottom-right-radius:6px;box-shadow:0 8px 18px rgba(91,91,214,.24)}
-  .msg.other .bubble{background:#f6f6fc;border:1px solid #ececf6;border-bottom-left-radius:6px}
-  .meta{font-size:10.5px;line-height:1.3;color:#b0b4c6;margin:0;white-space:nowrap}
-  .status{font-size:10.5px;line-height:1.3;color:#b0b4c6;white-space:nowrap}
-  .status.read{color:#7c7cf0}
+  .msg.own .bubble{background:#2f5d50;color:#f7f2e8;border-bottom-right-radius:5px;box-shadow:0 4px 12px rgba(47,93,80,.18)}
+  .msg.other .bubble{background:#fffdf7;border:1px solid #e6dccb;border-bottom-left-radius:5px}
+  .meta{font-size:10.5px;line-height:1.3;color:#a99f8e;margin:0;white-space:nowrap}
+  .status{font-size:10.5px;line-height:1.3;color:#a99f8e;white-space:nowrap}
+  .status.read{color:#4f8a6e}
   .msg.failed .meta{color:var(--bad)}
   .msg.failed .bubble{opacity:.55}
   @keyframes pop{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 
-  /* 消息上的小工具（引用 / 复制） */
-  .msg{position:relative}
   .foot{display:flex;align-items:center;gap:8px;margin:2px 6px 3px;min-height:18px}
   .msg.own .foot{flex-direction:row-reverse}
   .tools{display:none;gap:6px}
   .msg.show-tools .tools{display:flex}
   @media (hover:hover){ .msg:hover .tools{display:flex} }
-  .tool{background:#ececf8;color:#5b6076;font-size:11px;padding:1px 7px;border-radius:7px;line-height:1.5}
-  .tool:hover{background:#dedef4;color:#3f3f6e}
+  .tool{background:#efe7d8;color:#6d6558;font-size:11px;padding:1px 7px;border-radius:6px;line-height:1.5}
+  .tool:hover{background:#e6dbc9;color:#3a322a}
 
-  /* 引用块 */
-  .quote{border-left:3px solid rgba(255,255,255,.55);padding:1px 0 2px 8px;margin:0 0 6px;font-size:12.5px;line-height:1.45;opacity:.9;cursor:pointer}
-  .msg.other .quote{border-left-color:#c3c6e0}
+  .quote{border-left:3px solid rgba(247,242,232,.5);padding:1px 0 2px 8px;margin:0 0 6px;font-size:12.5px;line-height:1.45;opacity:.9;cursor:pointer}
+  .msg.other .quote{border-left-color:#cfc4ae}
   .quote .qn{font-weight:650;margin-right:4px}
-  .msg.flash .bubble{outline:2px solid #b9b9f0;outline-offset:2px}
+  .msg.flash .bubble{outline:2px solid #8fb9a5;outline-offset:2px}
 
   .composer{
     display:flex;gap:10px;align-items:flex-end;padding:12px 14px calc(12px + env(safe-area-inset-bottom));
-    border-top:1px solid var(--line);background:#fff;position:relative;
+    border-top:1px solid var(--line);background:var(--card);position:relative;
   }
   .counter{
-    position:absolute;right:16px;bottom:calc(100% + 6px);font-size:10.5px;color:#9aa0b6;
-    background:#fff;border:1px solid var(--line);border-radius:999px;padding:2px 8px;
+    position:absolute;right:16px;bottom:calc(100% + 6px);font-size:10.5px;color:#8a7f6e;
+    background:var(--card);border:1px solid var(--line);border-radius:999px;padding:2px 8px;
   }
-
-  /* 引用条 */
   .quotebar{
     display:flex;align-items:center;gap:10px;padding:9px 14px;border-top:1px solid var(--line);
-    background:#f7f7fc;
+    background:#f7f1e4;
   }
-  .quotebar .qb-main{flex:1;min-width:0;border-left:3px solid #b9b9f0;padding-left:9px}
-  .qb-name{display:block;font-size:11.5px;font-weight:650;color:#6b7089}
-  .qb-text{display:block;font-size:12.5px;color:#8b90a6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .qb-close{width:28px;height:28px;border-radius:9px;background:transparent;color:#8b90a6;font-size:17px;line-height:1;flex:none}
-  .qb-close:hover{background:#ededf9;color:#3f3f6e}
+  .quotebar .qb-main{flex:1;min-width:0;border-left:3px solid #7aa792;padding-left:9px}
+  .qb-name{display:block;font-size:11.5px;font-weight:650;color:#6d6558}
+  .qb-text{display:block;font-size:12.5px;color:#8a7f6e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .qb-close{width:28px;height:28px;border-radius:8px;background:transparent;color:#8a7f6e;font-size:17px;line-height:1;flex:none}
+  .qb-close:hover{background:#ece2d0;color:#3a322a}
 
-  /* 更多菜单 */
   .menu{
     position:absolute;top:56px;right:12px;z-index:30;width:186px;padding:6px;
-    background:#fff;border:1px solid var(--line);border-radius:14px;
-    box-shadow:0 16px 40px rgba(31,34,51,.16);
+    background:var(--card);border:1px solid var(--line);border-radius:12px;
+    box-shadow:0 16px 40px rgba(74,60,40,.16);
   }
   .menu-item{
     display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;
-    padding:9px 10px;border-radius:10px;background:transparent;color:var(--ink);font-size:13.5px;text-align:left;
+    padding:9px 10px;border-radius:8px;background:transparent;color:var(--ink);font-size:13.5px;text-align:left;
   }
-  .menu-item:hover{background:#f4f4fb}
-  .menu-item.danger{color:#d14343}
-  .switch{width:32px;height:18px;border-radius:999px;background:#dedee9;position:relative;flex:none;transition:.15s}
+  .menu-item:hover{background:#f5eee1}
+  .menu-item.danger{color:#a8382a}
+  .switch{width:32px;height:18px;border-radius:999px;background:#ddd2c0;position:relative;flex:none;transition:.15s}
   .switch::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:.15s}
   .menu-item[aria-checked=true] .switch{background:var(--accent)}
   .menu-item[aria-checked=true] .switch::after{left:16px}
-  .menu-note{padding:7px 10px 3px;margin-top:4px;border-top:1px solid var(--line);font-size:11px;color:#a3a9bd}
+  .menu-note{padding:7px 10px 3px;margin-top:4px;border-top:1px solid var(--line);font-size:11px;color:#a99f8e}
   #msgInput{
-    flex:1;resize:none;max-height:132px;min-height:46px;border:1px solid var(--line);background:#f8f8fd;
-    border-radius:16px;padding:12px 14px;font:inherit;font-size:16px;line-height:1.45;color:var(--ink);
+    flex:1;resize:none;max-height:132px;min-height:46px;border:1px solid var(--line);background:#f3ecdf;
+    border-radius:14px;padding:12px 14px;font:inherit;font-size:16px;line-height:1.45;color:var(--ink);
     outline:none;transition:.15s;
   }
-  #msgInput:focus{background:#fff;border-color:#c7c7f5;box-shadow:0 0 0 4px rgba(91,91,214,.10)}
-  #msgInput::placeholder{color:#b3b7c9}
+  #msgInput:focus{background:#fffdf7;border-color:#b9cfc5;box-shadow:0 0 0 4px rgba(47,93,80,.12)}
+  #msgInput::placeholder{color:#b3a894}
   .send{width:auto;height:46px;margin:0;padding:0 20px;flex:none}
   .attach{
-    width:46px;height:46px;flex:none;border-radius:14px;background:#f1f1fa;color:#5b6076;
+    width:46px;height:46px;flex:none;border-radius:12px;background:#efe7d8;color:#6d6558;
     display:flex;align-items:center;justify-content:center;
   }
-  .attach:hover{background:#e5e5f6;color:#3f3f6e}
+  .attach:hover{background:#e6dbc9;color:#3a322a}
   .emoji-panel{
     position:absolute;right:10px;bottom:calc(100% + 6px);z-index:25;
     width:min(304px,calc(100vw - 32px));max-height:236px;overflow-y:auto;
     display:grid;grid-template-columns:repeat(8,1fr);gap:2px;padding:8px;
-    background:var(--card);border:1px solid var(--line);border-radius:14px;
-    box-shadow:0 16px 40px rgba(31,34,51,.18);
+    background:var(--card);border:1px solid var(--line);border-radius:12px;
+    box-shadow:0 16px 40px rgba(74,60,40,.18);
   }
-  .emoji{
-    width:100%;aspect-ratio:1;border-radius:8px;background:transparent;
-    font-size:20px;line-height:1;display:flex;align-items:center;justify-content:center;
-    padding:0;
-  }
-  .emoji:hover{background:#f1f1fa}
-  .bubble-img{padding:4px;background:#f1f1fa!important;border:1px solid var(--line)!important;box-shadow:none!important}
-  .msg.own .bubble-img{background:#f1f1fa!important}
-  .img{display:block;max-width:100%;max-height:300px;border-radius:12px;cursor:zoom-in}
-  .imghint{font-size:12.5px;color:#8b90a6;padding:10px 12px;text-align:center;min-width:120px}
-  .imghint.bad{color:#e05a5a}
+  .emoji{width:100%;aspect-ratio:1;border-radius:7px;background:transparent;font-size:20px;line-height:1;display:flex;align-items:center;justify-content:center;padding:0}
+  .emoji:hover{background:#f3ebdd}
+  .bubble-img{padding:4px;background:#f3ecdf!important;border:1px solid var(--line)!important;box-shadow:none!important}
+  .msg.own .bubble-img{background:#f3ecdf!important}
+  .img{display:block;max-width:100%;max-height:300px;border-radius:10px;cursor:zoom-in}
+  .imghint{font-size:12.5px;color:#8a7f6e;padding:10px 12px;text-align:center;min-width:120px}
+  .imghint.bad{color:#b3402e}
 
   .toast{
     position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:60;max-width:86vw;
-    background:rgba(31,34,51,.94);color:#fff;padding:10px 16px;border-radius:12px;font-size:13.5px;
+    background:rgba(58,50,42,.95);color:#f7f2e8;padding:10px 16px;border-radius:11px;font-size:13.5px;
     box-shadow:0 10px 30px rgba(0,0,0,.22);text-align:center;animation:pop .16s ease-out;
   }
-
-  /* 弹窗 */
-  .modal{position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(18,20,28,.42);backdrop-filter:blur(2px)}
-  .modal-card{width:min(360px,100%);background:var(--card);border:1px solid var(--line);border-radius:18px;padding:20px;box-shadow:0 24px 60px rgba(0,0,0,.3)}
+  .modal{position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(30,26,20,.42);backdrop-filter:blur(2px)}
+  .modal-card{width:min(360px,100%);background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;box-shadow:0 24px 60px rgba(0,0,0,.3)}
   .modal-card h3{margin:0 0 12px;font-size:16px}
   .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
   .modal-actions .primary{width:auto;height:38px;margin:0;padding:0 18px;font-size:14px;box-shadow:none}
-  .sys{align-self:center;font-size:12px;color:#9aa0b6;background:#f4f4fb;padding:5px 12px;border-radius:999px;margin:8px 0}
 
   @media (max-width:700px){
     .app{padding:0}
@@ -231,66 +219,62 @@
     *{animation:none!important;transition:none!important;scroll-behavior:auto!important}
   }
 
-  /* ---------- 深色模式 ---------- */
   @media (prefers-color-scheme: dark){
     :root{
-      --bg:#0e1016; --card:#171a23; --ink:#e7e9f3; --muted:#8f96ab; --line:#272c3a;
+      --bg:#141210; --card:#1d1a16; --ink:#ece6da; --muted:#9a9184; --line:#332d26;
+      --accent:#6ba189; --accent2:#7fb39a; --ok:#5aa87a; --warn:#c99a3e; --bad:#c25a48;
     }
     body{
       background:
-        radial-gradient(1000px 600px at 8% -12%, rgba(64,66,140,.45) 0%, rgba(64,66,140,0) 62%),
-        radial-gradient(900px 560px at 96% -6%, rgba(120,40,90,.35) 0%, rgba(120,40,90,0) 58%),
+        radial-gradient(1000px 600px at 8% -12%, rgba(110,85,45,.32) 0%, rgba(110,85,45,0) 62%),
+        radial-gradient(900px 560px at 96% -6%, rgba(80,60,30,.24) 0%, rgba(80,60,30,0) 58%),
         var(--bg);
     }
-    .card,.chat{background:var(--card);border-color:#232837;box-shadow:0 24px 60px rgba(0,0,0,.45)}
-    .topbar{background:linear-gradient(180deg,#171a23,rgba(23,26,35,.94));border-bottom-color:var(--line)}
-    .log{background:linear-gradient(180deg,#141722,#171a23 40%)}
-    .msg.other .bubble{background:#1e2230;border-color:#2a3042;color:var(--ink)}
-    .name{color:#9aa1b6}
-    .meta{color:#6d748a}
-    .status{color:#6d748a}
-    .status.read{color:#8f8ff5}
-    .msg.own .bubble{box-shadow:0 8px 18px rgba(60,40,140,.45)}
-    .field>span,.check{color:#a3a9bd}
-    input[type=text]{background:#1b1f2b;border-color:#2a3042;color:var(--ink)}
-    input[type=text]:focus{background:#202533;border-color:#4a4ac0}
-    #msgInput{background:#1b1f2b;border-color:#2a3042;color:var(--ink)}
-    #msgInput:focus{background:#202533;border-color:#4a4ac0}
-    #msgInput::placeholder{color:#5f667c}
+    .card,.chat{background:var(--card);border-color:#2a251f;box-shadow:0 18px 46px rgba(0,0,0,.5)}
+    .topbar{background:linear-gradient(180deg,#1d1a16,rgba(29,26,22,.94));border-bottom-color:var(--line)}
+    .log{background:linear-gradient(180deg,#171410,#1d1a16 40%)}
+    .msg.other .bubble{background:#262119;border-color:#382f26;color:var(--ink)}
+    .msg.own .bubble{background:#2f5d50;color:#f2ece0;box-shadow:0 4px 12px rgba(0,0,0,.35)}
+    .name{color:#a9a093}
+    .meta,.status{color:#7d7466}
+    .status.read{color:#7fb39a}
+    .field>span,.check{color:#b0a795}
+    input[type=text]{background:#241f1a;border-color:#362f26;color:var(--ink)}
+    input[type=text]:focus{background:#2b2620;border-color:#4f7a68}
+    #msgInput{background:#241f1a;border-color:#362f26;color:var(--ink)}
+    #msgInput:focus{background:#2b2620;border-color:#4f7a68}
+    #msgInput::placeholder{color:#6b6254}
     .composer{background:var(--card);border-top-color:var(--line)}
-    .counter{background:#1e2230;border-color:#2a3042;color:#8f96ab}
-    .tool{background:#232838;color:#b9c0d4}
-    .tool:hover{background:#2b3145;color:#fff}
-    .sys{background:#1e2230;color:#8b93a8}
+    .counter{background:#241f1a;border-color:#362f26;color:#9a9184}
+    .tool{background:#2a251f;color:#b9ae9d}
+    .tool:hover{background:#332d26;color:#fff}
+    .sys{background:#241f1a;color:#a9a093}
     .empty{color:var(--muted)}
-    .menu{background:#1c2130;border-color:#2a3042;box-shadow:0 16px 40px rgba(0,0,0,.5)}
+    .menu{background:#221d18;border-color:#362f26;box-shadow:0 16px 40px rgba(0,0,0,.55)}
     .menu-item{color:var(--ink)}
-    .menu-item:hover{background:#242a3a}
-    .switch{background:#3a4054}
-    .ghost{color:#aab1c6}
-    .ghost:hover{background:#242a3a;color:#fff}
-    .tool{background:#252b3b;color:#b9c0d4}
-    .tool:hover{background:#2f3648;color:#fff}
-    .attach{background:#252b3b;color:#b9c0d4}
-    .attach:hover{background:#2f3648;color:#fff}
-    .emoji:hover{background:#252b3b}
-    .bubble-img,.msg.own .bubble-img{background:#252b3b!important;border-color:#2a3042!important}
-    .msg.other .quote{border-left-color:#4a5270}
-    .quotebar{background:#1a1f2c;border-top-color:var(--line)}
-    .quotebar .qb-main{border-left-color:#5b5bd6}
-    .qb-name{color:#a3a9bd}
-    .qb-text{color:#7d8499}
-    .qb-close{color:#8f96ab}
-    .qb-close:hover{background:#242a3a;color:#fff}
-    .toast{background:rgba(230,232,242,.96);color:#14161d}
-    .msg.flash .bubble{outline-color:#7c7cf0}
+    .menu-item:hover{background:#2b2620}
+    .switch{background:#3d362c}
+    .ghost{color:#b0a795}
+    .ghost:hover{background:#2b2620;color:#fff}
+    .attach{background:#2a251f;color:#b9ae9d}
+    .attach:hover{background:#332d26;color:#fff}
+    .emoji:hover{background:#2b2620}
+    .bubble-img,.msg.own .bubble-img{background:#2a251f!important;border-color:#382f26!important}
+    .msg.other .quote{border-left-color:#4a4136}
+    .quotebar{background:#1a1713;border-top-color:var(--line)}
+    .quotebar .qb-main{border-left-color:#5f8f7a}
+    .qb-name{color:#b0a795}
+    .qb-text{color:#8a8173}
+    .qb-close{color:#9a9184}
+    .qb-close:hover{background:#2b2620;color:#fff}
+    .toast{background:rgba(236,230,218,.96);color:#1a1713}
+    .msg.flash .bubble{outline-color:#6ba189}
   }
 </style>
 </head>
 <body>
 <div class="app">
 
-  <!-- 进入房间 -->
   <section class="card" id="joinScreen">
     <div class="logo" aria-hidden="true">
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -298,7 +282,7 @@
       </svg>
     </div>
     <h1>QINGLIAO</h1>
-    <p class="lead">不用注册、不用装软件。你和对方打开同一个网页、填同一个「房间口令」，就能实时收到对方的消息。</p>
+    <p class="lead">不用注册、不用装软件。你和对方打开同一个网页，填同一个房间口令，就能实时收到对方的消息。</p>
     <form id="joinForm" autocomplete="off">
       <label class="field">
         <span>你的昵称</span>
@@ -315,10 +299,9 @@
       <button type="submit" class="primary" id="enterBtn">进入聊天</button>
     </form>
     <p class="err" id="joinErr" hidden></p>
-    <p class="hint">口令就是房间钥匙，只有口令相同的人才会进同一个房间；把口令告诉对方即可。消息在浏览器里加密后再转发，中转服务器看不到内容；本机保存的聊天记录同样是密文。</p>
+    <p class="hint">口令就是房间钥匙，只有口令相同的人才会进同一个房间。消息在浏览器里加密后再转发，中转只看到密文；本机保存的记录同样是密文。</p>
   </section>
 
-  <!-- 聊天 -->
   <section class="chat is-hidden" id="chatScreen">
     <header class="topbar">
       <div class="who">
@@ -334,15 +317,9 @@
     </header>
 
     <div class="menu is-hidden" id="menu" role="menu">
-      <button type="button" class="menu-item" id="notifyItem" role="menuitemcheckbox" aria-checked="false">
-        <span>消息提醒</span><i class="switch"></i>
-      </button>
-      <button type="button" class="menu-item" id="soundItem" role="menuitemcheckbox" aria-checked="false">
-        <span>提示音</span><i class="switch"></i>
-      </button>
-      <button type="button" class="menu-item" id="miniItem" role="menuitemcheckbox" aria-checked="false">
-        <span>迷你窗口</span><i class="switch"></i>
-      </button>
+      <button type="button" class="menu-item" id="notifyItem" role="menuitemcheckbox" aria-checked="false"><span>消息提醒</span><i class="switch"></i></button>
+      <button type="button" class="menu-item" id="soundItem" role="menuitemcheckbox" aria-checked="false"><span>提示音</span><i class="switch"></i></button>
+      <button type="button" class="menu-item" id="miniItem" role="menuitemcheckbox" aria-checked="false"><span>迷你窗口</span><i class="switch"></i></button>
       <button type="button" class="menu-item" id="renameItem" role="menuitem"><span>修改昵称</span></button>
       <button type="button" class="menu-item danger" id="clearBtn" role="menuitem">清空本机记录</button>
       <div class="menu-note" id="menuNote">版本</div>
@@ -404,25 +381,23 @@
     </div>
   </div>
 </div>
+
 <noscript><p style="text-align:center;padding:20px">这个网页需要浏览器启用 JavaScript 才能使用。</p></noscript>
 
 <script>
 (function () {
   'use strict';
 
-  var VERSION = '3.1.3';
+  var VERSION = '3.2.1';
   var APP_NAME = 'QINGLIAO';
-  var MQTT_URL = 'wss://broker-cn.emqx.io:8084/mqtt';   // EMQX 国内公共节点
+  var MQTT_URL = 'wss://broker-cn.emqx.io:8084/mqtt';
   var MAX_LEN = 800;
   var HIST_MAX = 300;
 
   var $ = function (id) { return document.getElementById(id); };
 
-  /* ------------------------------------------------------------------ */
-  /* 基础工具                                                           */
-  /* ------------------------------------------------------------------ */
+  /* ---------------- 基础工具 ---------------- */
 
-  // cyrb53：把房间口令稳定地映射成一个短串，作为中转服务上的主题名
   function cyrb53(str, seed) {
     var h1 = 0xdeadbeef ^ (seed || 0);
     var h2 = 0x41c6ce57 ^ (seed || 0);
@@ -473,9 +448,7 @@
     toastTimer = setTimeout(function () { el.classList.add('is-hidden'); }, 2600);
   }
 
-  /* ------------------------------------------------------------------ */
-  /* 端到端加密（WebCrypto 不可用时自动降级为明文）                        */
-  /* ------------------------------------------------------------------ */
+  /* ---------------- 加密 ---------------- */
 
   var HAS_CRYPTO = !!(window.crypto && window.crypto.subtle && window.TextEncoder);
   var TE = window.TextEncoder ? new TextEncoder() : null;
@@ -503,25 +476,18 @@
       .then(function (base) {
         return window.crypto.subtle.deriveKey(
           { name: 'PBKDF2', salt: TE.encode('qingliao-salt-v1'), iterations: 120000, hash: 'SHA-256' },
-          base,
-          { name: 'AES-GCM', length: 256 },
-          false,
-          ['encrypt', 'decrypt']
+          base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']
         );
       });
   }
 
-  // 本地聊天记录用另一把由同一口令派生的密钥加密
   function makeHistKey(room) {
     return window.crypto.subtle
       .importKey('raw', TE.encode('qingliao-hist|' + String(room).trim().toLowerCase()), 'PBKDF2', false, ['deriveKey'])
       .then(function (base) {
         return window.crypto.subtle.deriveKey(
           { name: 'PBKDF2', salt: TE.encode('qingliao-hist-salt-v1'), iterations: 120000, hash: 'SHA-256' },
-          base,
-          { name: 'AES-GCM', length: 256 },
-          false,
-          ['encrypt', 'decrypt']
+          base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']
         );
       });
   }
@@ -537,9 +503,7 @@
 
   function unseal(key, payload) {
     if (typeof payload !== 'string' || payload.length < 3) return Promise.reject(new Error('bad payload'));
-    if (payload.slice(0, 2) === 'p:') {
-      return Promise.resolve(JSON.parse(TD.decode(fromB64(payload.slice(2)))));
-    }
+    if (payload.slice(0, 2) === 'p:') return Promise.resolve(JSON.parse(TD.decode(fromB64(payload.slice(2)))));
     if (payload.slice(0, 2) !== 'e:') return Promise.reject(new Error('unknown format'));
     if (!key) return Promise.reject(new Error('no key'));
     var rest = payload.slice(2);
@@ -552,56 +516,34 @@
     });
   }
 
-  /* ------------------------------------------------------------------ */
-  /* 运行时状态                                                          */
-  /* ------------------------------------------------------------------ */
+  /* ---------------- 状态 ---------------- */
 
   var S = {
     nick: '', room: '', topic: '', key: null, histKey: null,
-    ws: null, reconnectTimer: null, pingTimer: null,
-    mqttReady: false,
-    lastRx: 0,                   // 最近一次收到 broker 数据的时间
-    startedAt: 0,
-    quote: null,                 // 正在引用的消息
-    audio: null,
-    seen: Object.create(null),
-    hist: [],
-    saveSeq: 0,
-    retry: 0,
-    unread: 0,
-    pending: 0,
-    clientId: '',
-    connected: false,
-    statusKind: 'connecting',
-    statusText: '连接中…',
-    peerReadTs: 0,          // 对方已读到的（我发出的最后一条消息的 ts）
-    lastIncomingTs: 0,
-    readTimer: null,
-    pendingReadTs: 0,
-    lastSender: '',
-    lastTs: 0,
-    entered: false
+    ws: null, reconnectTimer: null, pingTimer: null, mqttReady: false, lastRx: 0,
+    quote: null, audio: null,
+    seen: Object.create(null), hist: [], saveSeq: 0,
+    retry: 0, unread: 0, pending: 0,
+    clientId: '', connected: false,
+    statusKind: 'connecting', statusText: '连接中…',
+    peerReadTs: 0, lastIncomingTs: 0, readTimer: null, pendingReadTs: 0,
+    lastSender: '', lastTs: 0, entered: false
   };
 
-  S.clientId = uid();     // 本页面的身份，用来忽略自己消息的回声
+  S.clientId = uid();
   var MQTT_CLIENT_ID = '';
 
-  // 持久会话要靠固定 clientId：每个浏览器每个房间一个，存在本地
   function ensureMqttId() {
     var key = 'ql.mqid.' + S.topic;
     try {
       var v = localStorage.getItem(key);
-      if (!v) {
-        v = 'ql' + Math.random().toString(36).slice(2, 12);
-        localStorage.setItem(key, v);
-      }
+      if (!v) { v = 'ql' + Math.random().toString(36).slice(2, 12); localStorage.setItem(key, v); }
       return v;
     } catch (e) {
       return 'ql' + Math.random().toString(36).slice(2, 12);
     }
   }
 
-  // 本地偏好：消息提醒 / 提示音
   var P = { notify: false, sound: false };
   try {
     var savedPref = JSON.parse(localStorage.getItem('ql.pref') || '{}');
@@ -637,14 +579,11 @@
       g.gain.setValueAtTime(0.0001, ctx.currentTime);
       g.gain.exponentialRampToValueAtTime(0.05, ctx.currentTime + 0.012);
       g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.2);
-      o.connect(g);
-      g.connect(ctx.destination);
-      o.start();
-      o.stop(ctx.currentTime + 0.22);
+      o.connect(g); g.connect(ctx.destination);
+      o.start(); o.stop(ctx.currentTime + 0.22);
     } catch (e) { /* ignore */ }
   }
 
-  // 页面在后台时才打扰：可选提示音 + 系统通知
   function notifyMessage(msg) {
     if (!document.hidden) return;
     if (P.sound) beep();
@@ -652,7 +591,7 @@
     try {
       if (!('Notification' in window) || Notification.permission !== 'granted') return;
       var n = new Notification(String(msg.n || '对方') + ' · ' + APP_NAME, {
-        body: msg.k === 'img' ? '[图片]' : String(msg.t).slice(0, 120),
+        body: msg.k === 'img' ? '[图片]' : String(msg.t || '').slice(0, 120),
         tag: msg.id,
         silent: true
       });
@@ -672,72 +611,10 @@
     $('statText').textContent = text;
   }
 
-  /* ------------------------------------------------------------------ */
-  /* 已读回执（控制消息，不入历史）                                        */
-  /* ------------------------------------------------------------------ */
-
-  function sendControl(payload) {
-    if (!S.entered) return;
-    payload.v = 1;
-    payload.c = S.clientId;      // 用来忽略自己的回声
-    payload.at = Date.now();     // 控制消息自身的发送时间（用于丢弃过期的补收）
-    payload.id = payload.id || uid();
-    S.seen[payload.id] = 1;
-    seal(S.key, payload).then(publish).catch(function () { /* 控制消息失败无所谓 */ });
-  }
-
-  function onPeerRead(ts) {
-    ts = Number(ts) || 0;
-    if (!ts) return;
-    if (ts > S.peerReadTs) {
-      S.peerReadTs = ts;
-      refreshOwnStatus();
-    }
-  }
-
-  // 只在「我确实看到」时才回已读，短时间内合并
-  function scheduleRead(ts) {
-    S.lastIncomingTs = Math.max(S.lastIncomingTs, Number(ts) || 0);
-    S.pendingReadTs = Math.max(S.pendingReadTs, Number(ts) || 0);
-    if (S.readTimer) return;
-    S.readTimer = setTimeout(function () {
-      S.readTimer = null;
-      var t = S.pendingReadTs;
-      S.pendingReadTs = 0;
-      if (t) sendControl({ k: 'r', ts: t });
-    }, 400);
-  }
-
-  // 窗口重新可见 / 获得焦点时，把期间收到的消息补一个已读
-  function markVisibleRead() {
-    if (document.visibilityState !== 'visible' || !document.hasFocus()) return;
-    if (S.lastIncomingTs) scheduleRead(S.lastIncomingTs);
-  }
-
-  function refreshOwnStatus() {
-    var logEl = $('log');
-    var old = logEl.querySelectorAll('.status');
-    for (var i = 0; i < old.length; i++) old[i].parentNode.removeChild(old[i]);
-    var owns = logEl.querySelectorAll('.msg.own');
-    if (!owns.length) return;
-    var last = owns[owns.length - 1];
-    var t = Number(last.getAttribute('data-ts')) || 0;
-    var read = t && S.peerReadTs && t <= S.peerReadTs;
-    var foot = last.querySelector('.foot');
-    if (!foot) return;
-    var st = document.createElement('span');
-    st.className = 'status' + (read ? ' read' : '');
-    st.textContent = read ? '已读' : '未读';
-    foot.appendChild(st);
-  }
-
-  /* ------------------------------------------------------------------ */
-  /* 记录（本地加密保存，刷新不丢）                                       */
-  /* ------------------------------------------------------------------ */
+  /* ---------------- 本地记录 ---------------- */
 
   function histKeyName() { return 'ql.hist.' + S.topic; }
 
-  // 本地空间不够时（图片消息很占地方），丢掉最老的记录再存
   function shrinkHist() {
     if (S.hist.length > 40) {
       S.hist = S.hist.slice(Math.floor(S.hist.length / 2));
@@ -752,10 +629,9 @@
     var seq = ++S.saveSeq;
     var data = S.hist.slice();
 
-    if (!S.histKey) {                       // 不支持加密时退化为明文
-      try { localStorage.setItem(histKeyName(), JSON.stringify(data)); } catch (e) {
-        if (shrinkHist()) setTimeout(saveHist, 0);
-      }
+    if (!S.histKey) {
+      try { localStorage.setItem(histKeyName(), JSON.stringify(data)); }
+      catch (e) { if (shrinkHist()) setTimeout(saveHist, 0); }
       return Promise.resolve();
     }
 
@@ -763,15 +639,11 @@
     return window.crypto.subtle
       .encrypt({ name: 'AES-GCM', iv: iv }, S.histKey, TE.encode(JSON.stringify(data)))
       .then(function (ct) {
-        if (seq !== S.saveSeq) return;      // 有更新的快照，丢弃这次
+        if (seq !== S.saveSeq) return;
         try {
-          localStorage.setItem(histKeyName(), JSON.stringify({
-            v: 1,
-            iv: toB64(iv),
-            ct: toB64(new Uint8Array(ct))
-          }));
+          localStorage.setItem(histKeyName(), JSON.stringify({ v: 1, iv: toB64(iv), ct: toB64(new Uint8Array(ct)) }));
         } catch (e) {
-          if (shrinkHist()) setTimeout(saveHist, 0);   // 腾点空间再试
+          if (shrinkHist()) setTimeout(saveHist, 0);
         }
       })
       .catch(function () { /* ignore */ });
@@ -786,16 +658,12 @@
     var parsed = null;
     try { parsed = JSON.parse(raw); } catch (e) { parsed = null; }
 
-    // 旧版本存的是明文数组：直接读出来，并顺便升级成密文
     if (Object.prototype.toString.call(parsed) === '[object Array]') {
       S.hist = parsed.slice(-HIST_MAX);
       saveHist();
       return Promise.resolve();
     }
-
-    if (!parsed || typeof parsed !== 'object' || !parsed.iv || !parsed.ct || !S.histKey) {
-      return Promise.resolve();
-    }
+    if (!parsed || typeof parsed !== 'object' || !parsed.iv || !parsed.ct || !S.histKey) return Promise.resolve();
 
     return window.crypto.subtle
       .decrypt({ name: 'AES-GCM', iv: fromB64(parsed.iv) }, S.histKey, fromB64(parsed.ct))
@@ -813,10 +681,10 @@
   }
 
   function clearHist() {
-    S.saveSeq++;                            // 作废进行中的写入
+    S.saveSeq++;
     try {
       localStorage.removeItem(histKeyName());
-      localStorage.setItem('ql.clear.' + S.topic, String(Date.now()));   // 补收时不把清掉的捞回来
+      localStorage.setItem('ql.clear.' + S.topic, String(Date.now()));
     } catch (e) { /* ignore */ }
     S.hist = [];
     S.lastSender = '';
@@ -830,9 +698,7 @@
     updateJump();
   }
 
-  /* ------------------------------------------------------------------ */
-  /* 界面：消息渲染                                                       */
-  /* ------------------------------------------------------------------ */
+  /* ---------------- 渲染 ---------------- */
 
   function nearBottom() {
     var el = $('log');
@@ -869,7 +735,6 @@
 
     var gap = msg.ts && S.lastTs ? (msg.ts - S.lastTs) : 0;
     var showName = !own && (S.lastSender !== msg.n || gap > 5 * 60 * 1000);
-
     if (showName) {
       var name = document.createElement('div');
       name.className = 'name';
@@ -890,13 +755,10 @@
         try { window.open(img.src, '_blank'); } catch (e) { /* ignore */ }
       });
       bubble.appendChild(img);
-      if (msg.local) {
-        img.src = msg.local;
-      } else {
-        loadImageInto(msg, img, bubble);
-      }
+      if (msg.local) img.src = msg.local;
+      else loadImageInto(msg, img, bubble);
       wrap.appendChild(bubble);
-      // 图片不提供「复制文字」
+
       var imgMeta = document.createElement('span');
       imgMeta.className = 'meta';
       imgMeta.textContent = fmtTime(msg.ts);
@@ -932,7 +794,6 @@
       return;
     }
 
-    // 引用块
     if (msg.q && msg.q.id) {
       var quoted = document.createElement('div');
       quoted.className = 'quote';
@@ -952,7 +813,7 @@
       bubble.appendChild(quoted);
     }
 
-    bubble.appendChild(document.createTextNode(msg.t));   // 纯文本，天然防注入
+    bubble.appendChild(document.createTextNode(msg.t));
     wrap.appendChild(bubble);
 
     var meta = document.createElement('span');
@@ -963,7 +824,6 @@
     foot.className = 'foot';
     foot.appendChild(meta);
 
-    // 引用 / 复制
     var tools = document.createElement('div');
     tools.className = 'tools';
     var btnQuote = document.createElement('button');
@@ -992,7 +852,7 @@
     wrap.appendChild(foot);
 
     bubble.addEventListener('click', function (ev) {
-      if (wrap.classList.contains('failed')) return;   // 失败消息的点击交给外层重发
+      if (wrap.classList.contains('failed')) return;
       ev.stopPropagation();
       var open = $('log').querySelector('.msg.show-tools');
       if (open && open !== wrap) open.classList.remove('show-tools');
@@ -1000,16 +860,27 @@
     });
 
     $('log').appendChild(wrap);
-
     S.lastSender = own ? '' : (msg.n || '对方');
     S.lastTs = msg.ts || Date.now();
-
-    if (own) refreshOwnStatus();     // 只在自己最后一条上标「未读/已读」
+    if (own) refreshOwnStatus();
   }
 
-  /* ------------------------------------------------------------------ */
-  /* 引用 / 跳转                                                         */
-  /* ------------------------------------------------------------------ */
+  function refreshOwnStatus() {
+    var logEl = $('log');
+    var old = logEl.querySelectorAll('.status');
+    for (var i = 0; i < old.length; i++) old[i].parentNode.removeChild(old[i]);
+    var owns = logEl.querySelectorAll('.msg.own');
+    if (!owns.length) return;
+    var last = owns[owns.length - 1];
+    var t = Number(last.getAttribute('data-ts')) || 0;
+    var read = t && S.peerReadTs && t <= S.peerReadTs;
+    var foot = last.querySelector('.foot');
+    if (!foot) return;
+    var st = document.createElement('span');
+    st.className = 'status' + (read ? ' read' : '');
+    st.textContent = read ? '已读' : '未读';
+    foot.appendChild(st);
+  }
 
   function startQuote(msg) {
     if (!msg || !msg.id) return;
@@ -1035,76 +906,66 @@
     setTimeout(function () { el.classList.remove('flash'); }, 1200);
   }
 
-  /* ------------------------------------------------------------------ */
-  /* 网络：接收                                                          */
-  /* ------------------------------------------------------------------ */
-
-  function handleRaw(sealed) {
-    if (!sealed) return;
-    return unseal(S.key, sealed).then(function (env) {
-      if (env && env.k === 'r') {
-        if (env.c && env.c === S.clientId) return;                    // 自己发的回声
-        if (Date.now() - (Number(env.at) || 0) > 20000) return;       // 补收回来的旧控制消息，丢掉
-        onPeerRead(env.ts);                                           // 对方已读
-        return;
-      }
-      if (!env || (!env.t && env.k !== 'img')) return;
-      if (env.id && S.seen[env.id]) return;
-      if (env.id) S.seen[env.id] = 1;
-
-      var msg;
-      if (env.k === 'img') {
-        if (!env.d || !env.iv) return;
-        msg = {
-          id: env.id || uid(),
-          n: String(env.n || '对方').slice(0, 24),
-          ts: Number(env.ts) || Date.now(),
-          k: 'img',
-          d: String(env.d),
-          iv: String(env.iv),
-          w: Number(env.w) || 0,
-          h: Number(env.h) || 0
-        };
-      } else {
-        msg = {
-          id: env.id || uid(),
-          n: String(env.n || '对方').slice(0, 24),
-          t: String(env.t).slice(0, MAX_LEN),
-          ts: Number(env.ts) || Date.now()
-        };
-      }
-      if (env.q && env.q.id) {
-        msg.q = {
-          id: String(env.q.id).slice(0, 64),
-          n: String(env.q.n || '').slice(0, 24),
-          t: String(env.q.t || '').slice(0, 80)
-        };
-      }
-      var wasNear = nearBottom();
-      renderMessage(msg, false, true);
-      pushHist(msg);
-      S.lastIncomingTs = Math.max(S.lastIncomingTs, msg.ts || 0);
-      if (document.visibilityState === 'visible' && document.hasFocus()) scheduleRead(msg.ts);
-      if (wasNear) {
-        scrollDown();
-      } else {
-        S.pending++;
-        updateJump();
-      }
-      bumpUnread();
-      notifyMessage(msg);
-    }).catch(function () {
-      addSystem('收到一条无法解密的消息（对方的房间口令可能不一致）');
-    });
+  function updateJump() {
+    var btn = $('jumpBtn');
+    if (!btn) return;
+    if (S.pending > 0) {
+      btn.textContent = (S.pending > 99 ? '99+' : S.pending) + ' 条新消息 ↓';
+      btn.classList.remove('is-hidden');
+    } else {
+      btn.classList.add('is-hidden');
+    }
   }
 
-  /* ------------------------------------------------------------------ */
-  /* 未读计数 + 迷你窗口                                                 */
-  /* ------------------------------------------------------------------ */
+  function resetJump() {
+    S.pending = 0;
+    updateJump();
+  }
 
-  var pipWin = null;
-  var faviconOn = null;
-  var faviconOff = null;
+  /* ---------------- 已读回执 ---------------- */
+
+  function sendControl(payload) {
+    if (!S.entered) return;
+    payload.v = 1;
+    payload.c = S.clientId;
+    payload.at = Date.now();
+    payload.id = payload.id || uid();
+    S.seen[payload.id] = 1;
+    seal(S.key, payload).then(publish).catch(function () { /* ignore */ });
+  }
+
+  function onPeerRead(ts) {
+    ts = Number(ts) || 0;
+    if (!ts) return;
+    if (ts > S.peerReadTs) {
+      S.peerReadTs = ts;
+      refreshOwnStatus();
+    }
+  }
+
+  function scheduleRead(ts) {
+    S.lastIncomingTs = Math.max(S.lastIncomingTs, Number(ts) || 0);
+    S.pendingReadTs = Math.max(S.pendingReadTs, Number(ts) || 0);
+    if (S.readTimer) return;
+    S.readTimer = setTimeout(function () {
+      S.readTimer = null;
+      var t = S.pendingReadTs;
+      S.pendingReadTs = 0;
+      if (t) sendControl({ k: 'r', ts: t });
+    }, 400);
+  }
+
+  function markVisibleRead() {
+    if (document.visibilityState !== 'visible' || !document.hasFocus()) return;
+    if (S.lastIncomingTs) scheduleRead(S.lastIncomingTs);
+  }
+
+  /* ---------------- 未读 / 标题 / 图标 / 小窗 ---------------- */
+
+  function updateTitle() {
+    document.title = S.unread ? '(' + S.unread + ') ' + APP_NAME : APP_NAME;
+    setFavicon(S.unread > 0);
+  }
 
   function makeFavicon(withDot) {
     try {
@@ -1113,8 +974,8 @@
       var x = c.getContext('2d');
       if (!x) return null;
       var g = x.createLinearGradient(0, 0, 64, 64);
-      g.addColorStop(0, '#5b5bd6');
-      g.addColorStop(1, '#7c3aed');
+      g.addColorStop(0, '#2f5d50');
+      g.addColorStop(1, '#4d8a74');
       x.fillStyle = g;
       var r = 14;
       x.beginPath();
@@ -1136,12 +997,15 @@
       if (withDot) {
         x.beginPath();
         x.arc(50, 14, 13, 0, Math.PI * 2);
-        x.fillStyle = '#ff453a';
+        x.fillStyle = '#f2b01e';
         x.fill();
       }
       return c.toDataURL('image/png');
     } catch (e) { return null; }
   }
+
+  var faviconOn = null;
+  var faviconOff = null;
 
   function setFavicon(hot) {
     try {
@@ -1153,10 +1017,7 @@
     } catch (e) { /* ignore */ }
   }
 
-  function updateTitle() {
-    document.title = S.unread ? '(' + S.unread + ') ' + APP_NAME : APP_NAME;
-    setFavicon(S.unread > 0);
-  }
+  var pipWin = null;
 
   function renderMini() {
     if (!pipWin || pipWin.closed) return;
@@ -1181,7 +1042,7 @@
   }
 
   function bumpUnread() {
-    if (!document.hidden && document.hasFocus()) return;   // 正看着就不用计数
+    if (!document.hidden && document.hasFocus()) return;
     S.unread++;
     updateTitle();
     renderMini();
@@ -1194,31 +1055,6 @@
     renderMini();
   }
 
-  // 「有新消息 ↓」悬浮按钮：翻历史时有新消息才出现
-  function updateJump() {
-    var btn = $('jumpBtn');
-    if (!btn) return;
-    if (S.pending > 0) {
-      btn.textContent = (S.pending > 99 ? '99+' : S.pending) + ' 条新消息 ↓';
-      btn.classList.remove('is-hidden');
-    } else {
-      btn.classList.add('is-hidden');
-    }
-  }
-
-  function resetJump() {
-    S.pending = 0;
-    updateJump();
-  }
-
-  function closeMini() {
-    if (pipWin && !pipWin.closed) {
-      try { pipWin.close(); } catch (e) { /* ignore */ }
-    }
-  }
-
-  // 把圆点放到「窗口真正露在屏幕上的那块区域」的中心：
-  // 窗口被拖到屏幕边缘、只露出一半时，点会跟着移到可见部分
   function positionMiniDot() {
     if (!pipWin || pipWin.closed) return;
     var win = pipWin;
@@ -1260,7 +1096,6 @@
       if (visBottom > visTop) cy = (visTop + visBottom) / 2;
     }
 
-    // 留一点边距，别贴死在边线上
     cx = Math.min(Math.max(cx, 9), Math.max(9, iw - 9));
     cy = Math.min(Math.max(cy, 9), Math.max(9, ih - 9));
 
@@ -1268,9 +1103,14 @@
     anchor.style.top = Math.round(cy) + 'px';
   }
 
+  function closeMini() {
+    if (pipWin && !pipWin.closed) {
+      try { pipWin.close(); } catch (e) { /* ignore */ }
+    }
+  }
+
   function toggleMini() {
-    var supported = 'documentPictureInPicture' in window;
-    if (!supported) {
+    if (!('documentPictureInPicture' in window)) {
       toast('这个浏览器不支持迷你窗口（需要 Chrome / Edge 116 以上）');
       return;
     }
@@ -1278,25 +1118,20 @@
       closeMini();
       return;
     }
+
     window.documentPictureInPicture.requestWindow({ width: 64, height: 40 }).then(function (win) {
       pipWin = win;
       $('miniItem').setAttribute('aria-checked', 'true');
       try { win.document.title = '·'; } catch (e) { /* ignore */ }
 
-      // 全部用内联样式：不依赖样式表是否注入成功，窗口拖动/缩放时始终居中
       var doc = win.document;
-      if (doc.documentElement) {
-        doc.documentElement.style.cssText = 'margin:0;padding:0;height:100%;overflow:hidden;background:#111318;';
-      }
-      if (doc.body) {
-        doc.body.style.cssText = 'margin:0;padding:0;height:100%;overflow:hidden;background:#111318;';
-      }
+      if (doc.documentElement) doc.documentElement.style.cssText = 'margin:0;padding:0;height:100%;overflow:hidden;background:#111318;';
+      if (doc.body) doc.body.style.cssText = 'margin:0;padding:0;height:100%;overflow:hidden;background:#111318;';
 
       var wrap = doc.createElement('div');
       wrap.id = 'miniWrap';
       wrap.style.cssText = 'position:fixed;left:0;top:0;right:0;bottom:0;background:#111318;cursor:pointer;-webkit-user-select:none;user-select:none;overflow:hidden;';
 
-      // 锚点：位置由 positionMiniDot 计算；呼吸/扩散动画只作用于里面的点，不影响定位
       var anchor = doc.createElement('div');
       anchor.id = 'miniAnchor';
       anchor.style.cssText = 'position:absolute;left:50%;top:50%;width:0;height:0;';
@@ -1309,10 +1144,9 @@
       dot.id = 'miniDot';
       dot.style.cssText = 'position:absolute;left:-7px;top:-7px;width:14px;height:14px;border-radius:50%;background:#3b4050;transition:background .2s,box-shadow .2s;';
 
-      // 贴着内容区四边的发光层（窗口自身的边框改不了，这层是画在里面的）
       var edge = doc.createElement('div');
       edge.id = 'miniEdge';
-      edge.style.cssText = 'position:absolute;left:0;top:0;right:0;bottom:0;pointer-events:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,0);transition:box-shadow .2s;';
+      edge.style.cssText = 'position:absolute;left:0;top:0;right:0;bottom:0;pointer-events:none;';
 
       anchor.appendChild(ring);
       anchor.appendChild(dot);
@@ -1352,9 +1186,7 @@
     });
   }
 
-  /* ------------------------------------------------------------------ */
-  /* MQTT over WebSocket（EMQX 公共节点）                                 */
-  /* ------------------------------------------------------------------ */
+  /* ---------------- MQTT ---------------- */
 
   var mqttBuf = new Uint8Array(0);
 
@@ -1378,7 +1210,6 @@
     return out;
   }
 
-  // cleanSession = 0（0x00）：让 broker 保留会话，离线期间的消息排队
   function connectPacket(clientId) {
     var head = [0x00, 0x04, 0x4d, 0x51, 0x54, 0x54, 0x04, 0x00, 0x00, 0x3c];
     var payload = Array.prototype.slice.call(mqttStr(clientId));
@@ -1386,7 +1217,6 @@
     return new Uint8Array([0x10].concat(encLen(body.length), body));
   }
 
-  // 订阅用 QoS 1，broker 才会给离线会话排队
   function subscribePacket(id, topic) {
     var t = Array.prototype.slice.call(mqttStr(topic));
     var body = [(id >> 8) & 0xff, id & 0xff].concat(t, [0x01]);
@@ -1399,7 +1229,6 @@
     return pktSeq;
   }
 
-  // 发布也用 QoS 1（min(发布QoS, 订阅QoS) 才是入队保证）
   function publishPacket(topic, payload) {
     var id = nextPktId();
     var body = Array.prototype.slice.call(mqttStr(topic))
@@ -1476,7 +1305,7 @@
       onMqttData(new Uint8Array(ev.data), ws);
     };
 
-    ws.onerror = function () { /* 交给 onclose 统一处理 */ };
+    ws.onerror = function () { /* ignore */ };
 
     ws.onclose = function () {
       if (S.ws !== ws) return;
@@ -1504,7 +1333,7 @@
       var pkt = mqttBuf.slice(r.next, total);
       mqttBuf = mqttBuf.slice(total);
 
-      if (type === 2) {                       // CONNACK
+      if (type === 2) {
         if (pkt.length < 2 || pkt[1] !== 0) {
           setStatus('offline', '服务器拒绝连接');
           try { ws.close(); } catch (e) { /* ignore */ }
@@ -1517,7 +1346,7 @@
         S.mqttReady = true;
         S.retry = 0;
         setStatus('online', '已连接');
-      } else if (type === 3) {                // PUBLISH
+      } else if (type === 3) {
         var qos = (flags & 0x06) >> 1;
         var tl = (pkt[0] << 8) | pkt[1];
         var pos = 2 + tl;
@@ -1531,15 +1360,12 @@
           try { ws.send(new Uint8Array([0x40, 0x02, (pid >> 8) & 0xff, pid & 0xff])); } catch (e) { /* ignore */ }
         }
         if (payload) handleRaw(payload);
-      } else if (type === 4) {                // PUBACK（我们发出的 QoS1 已确认）
-        S.lastRx = Date.now();
-      } else if (type === 13) {               // PINGRESP
+      } else if (type === 4 || type === 13) {
         S.lastRx = Date.now();
       }
     }
   }
 
-  // 心跳看门狗：长时间没有来自 broker 的数据就重连
   setInterval(function () {
     if (!S.entered || !S.ws || S.ws.readyState !== 1) return;
     if (S.mqttReady && S.lastRx && Date.now() - S.lastRx > 95000) {
@@ -1550,9 +1376,7 @@
   }, 15000);
 
   function publish(body) {
-    if (!S.ws || S.ws.readyState !== 1 || !S.mqttReady) {
-      return Promise.reject(new Error('尚未连接'));
-    }
+    if (!S.ws || S.ws.readyState !== 1 || !S.mqttReady) return Promise.reject(new Error('尚未连接'));
     try {
       var bytes = publishPacket(S.topic, body);
       if (bytes.length > 900 * 1024) return Promise.reject(new Error('消息太大'));
@@ -1563,9 +1387,67 @@
     }
   }
 
-  /* ------------------------------------------------------------------ */
-  /* 图片：压缩 → 加密 → 传到中转附件 → 消息里只带链接                     */
-  /* ------------------------------------------------------------------ */
+  function handleRaw(sealed) {
+    if (!sealed) return;
+    return unseal(S.key, sealed).then(function (env) {
+      if (env && env.k === 'r') {
+        if (env.c && env.c === S.clientId) return;
+        if (Date.now() - (Number(env.at) || 0) > 20000) return;
+        onPeerRead(env.ts);
+        return;
+      }
+      if (!env || (!env.t && env.k !== 'img')) return;
+      if (env.id && S.seen[env.id]) return;
+      if (env.id) S.seen[env.id] = 1;
+
+      var msg;
+      if (env.k === 'img') {
+        if (!env.d || !env.iv) return;
+        msg = {
+          id: env.id || uid(),
+          n: String(env.n || '对方').slice(0, 24),
+          ts: Number(env.ts) || Date.now(),
+          k: 'img',
+          d: String(env.d),
+          iv: String(env.iv),
+          w: Number(env.w) || 0,
+          h: Number(env.h) || 0
+        };
+      } else {
+        msg = {
+          id: env.id || uid(),
+          n: String(env.n || '对方').slice(0, 24),
+          t: String(env.t).slice(0, MAX_LEN),
+          ts: Number(env.ts) || Date.now()
+        };
+      }
+      if (env.q && env.q.id) {
+        msg.q = {
+          id: String(env.q.id).slice(0, 64),
+          n: String(env.q.n || '').slice(0, 24),
+          t: String(env.q.t || '').slice(0, 80)
+        };
+      }
+
+      var wasNear = nearBottom();
+      renderMessage(msg, false, true);
+      pushHist(msg);
+      S.lastIncomingTs = Math.max(S.lastIncomingTs, msg.ts || 0);
+      if (document.visibilityState === 'visible' && document.hasFocus()) scheduleRead(msg.ts);
+      if (wasNear) {
+        scrollDown();
+      } else {
+        S.pending++;
+        updateJump();
+      }
+      bumpUnread();
+      notifyMessage(msg);
+    }).catch(function () {
+      addSystem('收到一条无法解密的消息（对方的房间口令可能不一致）');
+    });
+  }
+
+  /* ---------------- 图片 ---------------- */
 
   var IMG_MAX_SIDE = 1400;
   var IMG_QUALITY = 0.75;
@@ -1583,8 +1465,7 @@
           var cw = Math.max(1, Math.round(w * scale));
           var ch = Math.max(1, Math.round(h * scale));
           var c = document.createElement('canvas');
-          c.width = cw;
-          c.height = ch;
+          c.width = cw; c.height = ch;
           var x = c.getContext('2d');
           x.fillStyle = '#ffffff';
           x.fillRect(0, 0, cw, ch);
@@ -1641,10 +1522,7 @@
   function sendImage(file) {
     if (!S.entered) return Promise.resolve(false);
     if (!file || !/^image\//.test(file.type || '')) { toast('这个文件不是图片'); return Promise.resolve(false); }
-    if (!window.crypto || !window.crypto.subtle || !S.key) {
-      toast('当前浏览器环境不支持加密，不能发图片');
-      return Promise.resolve(false);
-    }
+    if (!window.crypto || !window.crypto.subtle || !S.key) { toast('当前浏览器环境不支持加密，不能发图片'); return Promise.resolve(false); }
     if (file.size > 10 * 1024 * 1024) { toast('图片太大了（上限 10MB）'); return Promise.resolve(false); }
 
     toast('正在处理图片…');
@@ -1661,7 +1539,10 @@
             k: 'img', d: b64, iv: enc.iv, w: res.w, h: res.h
           };
           S.seen[msg.id] = 1;
-          renderMessage({ id: msg.id, n: msg.n, ts: msg.ts, k: 'img', d: b64, iv: msg.iv, w: msg.w, h: msg.h, local: localUrl }, true, true);
+          renderMessage({
+            id: msg.id, n: msg.n, ts: msg.ts, k: 'img',
+            d: b64, iv: msg.iv, w: msg.w, h: msg.h, local: localUrl
+          }, true, true);
           pushHist(msg);
           scrollDown(true);
           resetJump();
@@ -1677,9 +1558,14 @@
     });
   }
 
-  /* ------------------------------------------------------------------ */
-  /* 网络：发送                                                          */
-  /* ------------------------------------------------------------------ */
+  /* ---------------- 发送 ---------------- */
+
+  function describeSendError(err) {
+    var m = String((err && err.message) || err || '');
+    if (m.indexOf('尚未连接') >= 0) return '还没连上服务器，点消息可重试';
+    if (m.indexOf('消息太大') >= 0) return '消息太大，发短一点';
+    return '发送失败（' + (m || '未知原因') + '），点消息可重试';
+  }
 
   function sendMessage(text) {
     if (!S.entered) return Promise.resolve(false);
@@ -1693,28 +1579,18 @@
     renderMessage(env, true, true);
     pushHist(env);
     clearQuote();
-    scrollDown(true);          // 自己发完消息，始终回到最新
+    scrollDown(true);
     resetJump();
-    setTimeout(function () { scrollDown(true); }, 60);   // 等输入框收回高度后再纠一次
+    setTimeout(function () { scrollDown(true); }, 60);
 
     return seal(S.key, env)
       .then(publish)
-      .then(function () {
-        return true;
-      })
+      .then(function () { return true; })
       .catch(function (err) {
         markFailed(env.id);
         toast(describeSendError(err));
         return false;
       });
-  }
-
-  // 把失败原因说得具体一点，方便定位
-  function describeSendError(err) {
-    var m = String((err && err.message) || err || '');
-    if (m.indexOf('尚未连接') >= 0) return '还没连上服务器，点消息可重试';
-    if (m.indexOf('消息太大') >= 0) return '消息太大，发短一点';
-    return '发送失败（' + (m || '未知原因') + '），点消息可重试';
   }
 
   function markFailed(id) {
@@ -1747,9 +1623,7 @@
     });
   }
 
-  /* ------------------------------------------------------------------ */
-  /* 进入 / 退出                                                         */
-  /* ------------------------------------------------------------------ */
+  /* ---------------- 进入 / 退出 / 改名 ---------------- */
 
   function showJoinError(text) {
     var el = $('joinErr');
@@ -1767,9 +1641,8 @@
     if (room.length < 2) { showJoinError('房间口令至少 2 个字符'); $('roomInput').focus(); return; }
 
     showJoinError('');
-    if (room.length < 8) {
-      toast('口令偏短：建议至少 8 位，或点「换一个」用随机口令');
-    }
+    if (room.length < 8) toast('口令偏短：建议至少 8 位，或点「换一个」用随机口令');
+
     $('enterBtn').disabled = true;
     $('enterBtn').textContent = '正在进入…';
 
@@ -1838,8 +1711,6 @@
         addSystem('以上是这台电脑上保存的历史消息');
         scrollDown();
       }
-
-      // 已有记录的 id 先标记为“见过”，避免自己发的消息被重复渲染
       for (var j = 0; j < S.hist.length; j++) {
         if (S.hist[j].id) S.seen[S.hist[j].id] = 1;
       }
@@ -1869,10 +1740,6 @@
     updateJump();
   }
 
-  /* ------------------------------------------------------------------ */
-  /* 修改昵称                                                           */
-  /* ------------------------------------------------------------------ */
-
   function openRename() {
     if (!S.entered) return;
     $('renameInput').value = S.nick;
@@ -1897,9 +1764,7 @@
     toast('昵称已改为「' + v + '」');
   }
 
-  /* ------------------------------------------------------------------ */
-  /* 复制 / 邀请                                                         */
-  /* ------------------------------------------------------------------ */
+  /* ---------------- 复制 / 邀请 ---------------- */
 
   function copyText(text) {
     if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -1930,16 +1795,14 @@
     return '来「' + APP_NAME + '」和我聊天：\n打开我发给你的 qingliao-chat.html\n房间口令：' + S.room + '\n（填个昵称就能进）';
   }
 
-  /* ------------------------------------------------------------------ */
-  /* 输入框                                                              */
-  /* ------------------------------------------------------------------ */
+  /* ---------------- 输入框 / 表情 ---------------- */
 
   function autoGrow() {
     var el = $('msgInput');
     var atBottom = nearBottom();
     el.style.height = 'auto';
     el.style.height = Math.min(132, el.scrollHeight) + 'px';
-    if (atBottom) scrollDown(true);     // 输入框变高时，别把最新消息挤出视野
+    if (atBottom) scrollDown(true);
   }
 
   function updateCounter() {
@@ -1953,9 +1816,16 @@
     }
   }
 
-  /* ------------------------------------------------------------------ */
-  /* 表情面板                                                           */
-  /* ------------------------------------------------------------------ */
+  function submitInput() {
+    var el = $('msgInput');
+    var text = el.value;
+    if (!text.replace(/\s+/g, '')) return;
+    el.value = '';
+    autoGrow();
+    updateCounter();
+    toggleEmoji(false);
+    sendMessage(text);
+  }
 
   var EMOJIS = ('😀 😄 😁 😆 😅 😂 🤣 😊 😇 🙂 😉 😍 🥰 😘 😋 😜 🤪 🤗 🤔 🤨 😐 😑 😴 🥱 😮 😲 😳 🥺 😢 😭 😤 😡 ' +
     '🤯 😱 😬 🙄 😏 😒 😞 😔 👍 👎 👌 ✌️ 🤞 👏 🙌 🙏 💪 👋 🤝 👀 ❤️ 🧡 💛 💚 💙 💜 💔 💯 🔥 ✨ 🎉 🎊 ✅ ❌ ⚠️ ⏰ 💻 📌 ☕ 🍜').split(' ');
@@ -1999,23 +1869,10 @@
     panel.classList.toggle('is-hidden', !show);
   }
 
-  function submitInput() {
-    var el = $('msgInput');
-    var text = el.value;
-    if (!text.replace(/\s+/g, '')) return;
-    el.value = '';
-    autoGrow();
-    updateCounter();
-    toggleEmoji(false);
-    sendMessage(text);
-  }
-
-  /* ------------------------------------------------------------------ */
-  /* 启动                                                               */
-  /* ------------------------------------------------------------------ */
+  /* ---------------- 启动 ---------------- */
 
   function boot() {
-    if (!$('joinScreen')) return;   // 非正式页面（例如测试页）不启动界面
+    if (!$('joinScreen')) return;
 
     var q = new URLSearchParams(location.search);
     var savedNick = '';
@@ -2048,9 +1905,7 @@
     });
     $('emojiPanel').addEventListener('click', function (ev) { ev.stopPropagation(); });
 
-    $('imgBtn').addEventListener('click', function () {
-      $('fileInput').click();
-    });
+    $('imgBtn').addEventListener('click', function () { $('fileInput').click(); });
     $('fileInput').addEventListener('change', function () {
       var files = this.files ? Array.prototype.slice.call(this.files) : [];
       this.value = '';
@@ -2106,7 +1961,6 @@
       leave();
     });
 
-    /* ---------- 更多菜单 ---------- */
     function hideMenu() {
       $('menu').classList.add('is-hidden');
       $('moreBtn').setAttribute('aria-expanded', 'false');
@@ -2213,7 +2067,6 @@
       }
     });
 
-    /* ---------- 断线看门狗 & 网络恢复 ---------- */
     window.addEventListener('online', function () {
       if (S.entered && !S.connected) connect();
     });
@@ -2221,7 +2074,6 @@
       if (S.entered) setStatus('offline', '网络已断开');
     });
 
-    /* ---------- 手机键盘弹起时保持输入框可见 ---------- */
     if (window.visualViewport) {
       var vv = window.visualViewport;
       var syncViewport = function () {
@@ -2239,23 +2091,23 @@
     }
 
     document.addEventListener('visibilitychange', function () {
-      if (!document.hidden) clearUnread();
-      if (!document.hidden) updateTitle();
-      if (!document.hidden) markVisibleRead();
+      if (!document.hidden) {
+        clearUnread();
+        updateTitle();
+        markVisibleRead();
+      }
     });
     window.addEventListener('focus', function () {
       clearUnread();
       markVisibleRead();
     });
 
-    // 邀请链接里带口令：?room=xxx&nick=yyy&go=1
     if (q.get('go') === '1' && q.get('room') && q.get('nick')) {
       enter();
     } else if (q.get('room')) {
       $('nickInput').focus();
     }
 
-    // 窄屏用短提示，避免 placeholder 换行被裁掉
     var fitPlaceholder = function () {
       if (!$('msgInput')) return;
       $('msgInput').placeholder = window.innerWidth < 620
@@ -2266,7 +2118,6 @@
     window.addEventListener('resize', fitPlaceholder);
   }
 
-  // 调试/自测入口（正常使用不受影响）
   window.__ql = {
     version: VERSION,
     topicFor: topicFor,
@@ -2285,12 +2136,12 @@
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () {
       try { boot(); } catch (e) {
-        document.body.innerHTML = '<pre style="padding:20px;color:#b91c1c">页面启动失败：' + String(e && e.message || e) + '</pre>';
+        document.body.innerHTML = '<pre style="padding:20px;color:#b3402e">页面启动失败：' + String((e && e.message) || e) + '</pre>';
       }
     });
   } else {
     try { boot(); } catch (e) {
-      document.body.innerHTML = '<pre style="padding:20px;color:#b91c1c">页面启动失败：' + String(e && e.message || e) + '</pre>';
+      document.body.innerHTML = '<pre style="padding:20px;color:#b3402e">页面启动失败：' + String((e && e.message) || e) + '</pre>';
     }
   }
 })();
