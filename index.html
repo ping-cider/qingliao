@@ -327,7 +327,7 @@
       </div>
       <div class="actions">
         <button type="button" class="ghost" id="inviteBtn" title="复制邀请信息发给对方">邀请</button>
-        <button type="button" class="ghost" id="modeBtn" title="网络不通时可切换连接方式">实时</button>
+        <button type="button" class="ghost" id="reconnectBtn" title="手动重连">重连</button>
         <button type="button" class="ghost" id="moreBtn" title="更多选项" aria-haspopup="menu" aria-expanded="false">⋯</button>
         <button type="button" class="ghost" id="leaveBtn" title="回到进入页">退出</button>
       </div>
@@ -410,8 +410,8 @@
 (function () {
   'use strict';
 
-  var VERSION = '2.2.2';
-  var BASE = 'https://ntfy.sh';        // 消息中转（无需注册的公共服务）
+  var VERSION = '3.0.0';
+  var MQTT_URL = 'wss://broker-cn.emqx.io:8084/mqtt';   // EMQX 国内公共节点
   var MAX_LEN = 800;
   var HIST_MAX = 300;
 
@@ -557,12 +557,10 @@
 
   var S = {
     nick: '', room: '', topic: '', key: null, histKey: null,
-    es: null, pollTimer: null, reconnectTimer: null,
-    mode: 'sse',                 // sse | poll
-    cursor: '',                  // 最后一条消息 id
+    ws: null, reconnectTimer: null, pingTimer: null,
+    mqttReady: false,
+    lastRx: 0,                   // 最近一次收到 broker 数据的时间
     startedAt: 0,
-    catchupSince: 0,             // 进房时补收的起点（秒）
-    lastBeat: 0,                 // 最近一次收到服务端数据的时间
     quote: null,                 // 正在引用的消息
     audio: null,
     seen: Object.create(null),
@@ -585,6 +583,7 @@
   };
 
   S.clientId = uid();     // 本页面的身份，用来忽略自己消息的回声
+  var MQTT_CLIENT_ID = 'ql' + Math.random().toString(36).slice(2, 12);
 
   // 本地偏好：消息提醒 / 提示音
   var P = { notify: false, sound: false };
@@ -668,14 +667,7 @@
     payload.at = Date.now();     // 控制消息自身的发送时间（用于丢弃过期的补收）
     payload.id = payload.id || uid();
     S.seen[payload.id] = 1;
-    seal(S.key, payload).then(function (body) {
-      return fetch(BASE + '/' + encodeURIComponent(S.topic), {
-        method: 'POST',
-        body: body,
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        cache: 'no-store'
-      });
-    }).catch(function () { /* 控制消息失败无所谓 */ });
+    seal(S.key, payload).then(publish).catch(function () { /* 控制消息失败无所谓 */ });
   }
 
   function onPeerRead(ts) {
@@ -729,12 +721,25 @@
 
   function histKeyName() { return 'ql.hist.' + S.topic; }
 
+  // 本地空间不够时（图片消息很占地方），丢掉最老的记录再存
+  function shrinkHist() {
+    if (S.hist.length > 40) {
+      S.hist = S.hist.slice(Math.floor(S.hist.length / 2));
+      return true;
+    }
+    var before = S.hist.length;
+    S.hist = S.hist.filter(function (m) { return m.k !== 'img'; });
+    return S.hist.length < before;
+  }
+
   function saveHist() {
     var seq = ++S.saveSeq;
     var data = S.hist.slice();
 
     if (!S.histKey) {                       // 不支持加密时退化为明文
-      try { localStorage.setItem(histKeyName(), JSON.stringify(data)); } catch (e) { /* ignore */ }
+      try { localStorage.setItem(histKeyName(), JSON.stringify(data)); } catch (e) {
+        if (shrinkHist()) setTimeout(saveHist, 0);
+      }
       return Promise.resolve();
     }
 
@@ -749,7 +754,9 @@
             iv: toB64(iv),
             ct: toB64(new Uint8Array(ct))
           }));
-        } catch (e) { /* 配额满等情况忽略 */ }
+        } catch (e) {
+          if (shrinkHist()) setTimeout(saveHist, 0);   // 腾点空间再试
+        }
       })
       .catch(function () { /* ignore */ });
   }
@@ -1016,19 +1023,9 @@
   /* 网络：接收                                                          */
   /* ------------------------------------------------------------------ */
 
-  function handleRaw(text) {
-    var raw;
-    try { raw = JSON.parse(text); } catch (e) { return; }
-    if (!raw || raw.event !== 'message') return;
-    if (raw.attachment) return;                 // 图片原始上传产生的那条消息，忽略
-    if (typeof raw.message !== 'string' || !raw.message) return;
-    if (raw.id && S.seen[raw.id]) return;
-    if (raw.id) {
-      S.seen[raw.id] = 1;
-      S.cursor = raw.id;
-    }
-
-    return unseal(S.key, raw.message).then(function (env) {
+  function handleRaw(sealed) {
+    if (!sealed) return;
+    return unseal(S.key, sealed).then(function (env) {
       if (env && env.k === 'r') {
         if (env.c && env.c === S.clientId) return;                    // 自己发的回声
         if (Date.now() - (Number(env.at) || 0) > 20000) return;       // 补收回来的旧控制消息，丢掉
@@ -1041,23 +1038,23 @@
 
       var msg;
       if (env.k === 'img') {
-        if (!env.u || !env.iv) return;
+        if (!env.d || !env.iv) return;
         msg = {
-          id: env.id || raw.id || uid(),
+          id: env.id || uid(),
           n: String(env.n || '对方').slice(0, 24),
-          ts: Number(env.ts) || (raw.time ? raw.time * 1000 : Date.now()),
+          ts: Number(env.ts) || Date.now(),
           k: 'img',
-          u: String(env.u),
+          d: String(env.d),
           iv: String(env.iv),
           w: Number(env.w) || 0,
           h: Number(env.h) || 0
         };
       } else {
         msg = {
-          id: env.id || raw.id || uid(),
+          id: env.id || uid(),
           n: String(env.n || '对方').slice(0, 24),
           t: String(env.t).slice(0, MAX_LEN),
-          ts: Number(env.ts) || (raw.time ? raw.time * 1000 : Date.now())
+          ts: Number(env.ts) || Date.now()
         };
       }
       if (env.q && env.q.id) {
@@ -1237,12 +1234,76 @@
     });
   }
 
-  function teardown() {
-    if (S.es) {
-      try { S.es.close(); } catch (e) { /* ignore */ }
-      S.es = null;
+  /* ------------------------------------------------------------------ */
+  /* MQTT over WebSocket（EMQX 公共节点）                                 */
+  /* ------------------------------------------------------------------ */
+
+  var mqttBuf = new Uint8Array(0);
+
+  function encLen(n) {
+    var out = [];
+    do {
+      var b = n % 128;
+      n = Math.floor(n / 128);
+      if (n > 0) b |= 0x80;
+      out.push(b);
+    } while (n > 0);
+    return out;
+  }
+
+  function mqttStr(s) {
+    var bytes = new TextEncoder().encode(s);
+    var out = new Uint8Array(2 + bytes.length);
+    out[0] = (bytes.length >> 8) & 0xff;
+    out[1] = bytes.length & 0xff;
+    out.set(bytes, 2);
+    return out;
+  }
+
+  function connectPacket(clientId) {
+    var head = [0x00, 0x04, 0x4d, 0x51, 0x54, 0x54, 0x04, 0x02, 0x00, 0x3c];
+    var payload = Array.prototype.slice.call(mqttStr(clientId));
+    var body = head.concat(payload);
+    return new Uint8Array([0x10].concat(encLen(body.length), body));
+  }
+
+  function subscribePacket(id, topic) {
+    var t = Array.prototype.slice.call(mqttStr(topic));
+    var body = [(id >> 8) & 0xff, id & 0xff].concat(t, [0x00]);
+    return new Uint8Array([0x82].concat(encLen(body.length), body));
+  }
+
+  function publishPacket(topic, payload) {
+    var body = Array.prototype.slice.call(mqttStr(topic))
+      .concat(Array.prototype.slice.call(new TextEncoder().encode(payload)));
+    return new Uint8Array([0x30].concat(encLen(body.length), body));
+  }
+
+  var PINGREQ = new Uint8Array([0xc0, 0x00]);
+
+  function readVarLen(buf, pos) {
+    var mult = 1, val = 0, i = pos;
+    for (var guard = 0; guard < 4; guard++) {
+      if (i >= buf.length) return null;
+      var b = buf[i++];
+      val += (b & 0x7f) * mult;
+      if ((b & 0x80) === 0) return { value: val, next: i };
+      mult *= 128;
     }
-    if (S.pollTimer) { clearInterval(S.pollTimer); S.pollTimer = null; }
+    return null;
+  }
+
+  function teardown() {
+    var ws = S.ws;
+    S.ws = null;
+    S.mqttReady = false;
+    if (S.pingTimer) { clearInterval(S.pingTimer); S.pingTimer = null; }
+    if (ws) {
+      try {
+        ws.onclose = null; ws.onmessage = null; ws.onerror = null;
+        ws.close();
+      } catch (e) { /* ignore */ }
+    }
     if (S.reconnectTimer) { clearTimeout(S.reconnectTimer); S.reconnectTimer = null; }
   }
 
@@ -1259,78 +1320,87 @@
   function connect() {
     if (!S.entered) return;
     teardown();
-    var since = S.cursor || S.catchupSince || Math.floor(S.startedAt / 1000);
-
-    if (S.mode === 'poll') {
-      setStatus('connecting', '连接中…');
-      pollOnce();
-      S.pollTimer = setInterval(pollOnce, 2500);
-      return;
-    }
-
     setStatus('connecting', '连接中…');
-    var url = BASE + '/' + encodeURIComponent(S.topic) + '/sse?since=' + encodeURIComponent(since);
-    var es;
+
+    var ws;
     try {
-      es = new EventSource(url);
+      ws = new WebSocket(MQTT_URL, 'mqtt');
     } catch (e) {
       setStatus('offline', '无法连接');
       scheduleReconnect();
       return;
     }
-    S.es = es;
-    S.lastBeat = Date.now();
+    ws.binaryType = 'arraybuffer';
+    S.ws = ws;
+    mqttBuf = new Uint8Array(0);
+    S.mqttReady = false;
+    S.lastRx = Date.now();
 
-    es.onopen = function () {
-      S.retry = 0;
-      S.lastBeat = Date.now();
-      setStatus('online', '已连接');
+    ws.onopen = function () {
+      if (S.ws !== ws) return;
+      try { ws.send(connectPacket(MQTT_CLIENT_ID)); } catch (e) { /* ignore */ }
     };
-    es.onmessage = function (ev) {
-      S.lastBeat = Date.now();
-      handleRaw(ev.data);
+
+    ws.onmessage = function (ev) {
+      if (S.ws !== ws) return;
+      S.lastRx = Date.now();
+      onMqttData(new Uint8Array(ev.data), ws);
     };
-    try {
-      es.addEventListener('keepalive', function () { S.lastBeat = Date.now(); });
-      es.addEventListener('open', function () { S.lastBeat = Date.now(); });
-    } catch (e) { /* ignore */ }
-    es.onerror = function () {
-      if (es.readyState === 2) {          // CLOSED：浏览器已经放弃自动重连
-        teardown();
-        scheduleReconnect();
-      } else {
-        setStatus('offline', '已断开，正在重连…');
-      }
+
+    ws.onerror = function () { /* 交给 onclose 统一处理 */ };
+
+    ws.onclose = function () {
+      if (S.ws !== ws) return;
+      S.ws = null;
+      S.mqttReady = false;
+      if (S.pingTimer) { clearInterval(S.pingTimer); S.pingTimer = null; }
+      scheduleReconnect();
     };
   }
 
-  function pollOnce() {
-    if (S.mode !== 'poll' || !S.entered) return;
-    var since = S.cursor || Math.floor(S.startedAt / 1000);
-    var url = BASE + '/' + encodeURIComponent(S.topic) + '/json?poll=1&since=' + encodeURIComponent(since);
-    fetch(url, { cache: 'no-store' })
-      .then(function (res) {
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        return res.text();
-      })
-      .then(function (text) {
-        setStatus('online', '已连接（兼容模式）');
-        S.retry = 0;
-        S.lastBeat = Date.now();
-        var lines = text.split('\n');
-        for (var i = 0; i < lines.length; i++) {
-          if (lines[i].trim()) handleRaw(lines[i]);
+  function onMqttData(chunk, ws) {
+    var merged = new Uint8Array(mqttBuf.length + chunk.length);
+    merged.set(mqttBuf, 0);
+    merged.set(chunk, mqttBuf.length);
+    mqttBuf = merged;
+
+    while (true) {
+      if (mqttBuf.length < 2) return;
+      var r = readVarLen(mqttBuf, 1);
+      if (!r) return;
+      var total = r.next + r.value;
+      if (mqttBuf.length < total) return;
+      var type = mqttBuf[0] >> 4;
+      var pkt = mqttBuf.slice(r.next, total);
+      mqttBuf = mqttBuf.slice(total);
+
+      if (type === 2) {                       // CONNACK
+        if (pkt.length < 2 || pkt[1] !== 0) {
+          setStatus('offline', '服务器拒绝连接');
+          try { ws.close(); } catch (e) { /* ignore */ }
+          return;
         }
-      })
-      .catch(function () {
-        setStatus('offline', '连接中断，正在重试…');
-      });
+        try { ws.send(subscribePacket(1, S.topic)); } catch (e) { /* ignore */ }
+        S.pingTimer = setInterval(function () {
+          try { if (ws.readyState === 1) ws.send(PINGREQ); } catch (e) { /* ignore */ }
+        }, 30000);
+        S.mqttReady = true;
+        S.retry = 0;
+        setStatus('online', '已连接');
+      } else if (type === 3) {                // PUBLISH
+        var tl = (pkt[0] << 8) | pkt[1];
+        var payload = new TextDecoder().decode(pkt.slice(2 + tl));
+        if (payload) handleRaw(payload);
+      } else if (type === 13) {               // PINGRESP
+        S.lastRx = Date.now();
+      }
+    }
   }
 
-  // 长连接可能被代理悄悄掐断（浏览器不报错），这里做心跳看门狗
+  // 心跳看门狗：长时间没有来自 broker 的数据就重连
   setInterval(function () {
-    if (!S.entered || S.mode !== 'sse' || !S.es || S.es.readyState !== 1) return;
-    if (S.lastBeat && Date.now() - S.lastBeat > 95000) {
+    if (!S.entered || !S.ws || S.ws.readyState !== 1) return;
+    if (S.mqttReady && S.lastRx && Date.now() - S.lastRx > 95000) {
       setStatus('offline', '连接可能已失效，正在重连…');
       S.retry = 0;
       connect();
@@ -1338,31 +1408,25 @@
   }, 15000);
 
   function publish(body) {
-    var ctrl = null;
-    var opts = {
-      method: 'POST',
-      body: body,
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      cache: 'no-store'
-    };
+    if (!S.ws || S.ws.readyState !== 1 || !S.mqttReady) {
+      return Promise.reject(new Error('尚未连接'));
+    }
     try {
-      ctrl = new AbortController();
-      opts.signal = ctrl.signal;
-      setTimeout(function () { if (ctrl) ctrl.abort(); }, 12000);
-    } catch (e) { /* 老浏览器忽略超时 */ }
-
-    return fetch(BASE + '/' + encodeURIComponent(S.topic), opts).then(function (res) {
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      return true;
-    });
+      var bytes = publishPacket(S.topic, body);
+      if (bytes.length > 900 * 1024) return Promise.reject(new Error('消息太大'));
+      S.ws.send(bytes);
+      return Promise.resolve(true);
+    } catch (e) {
+      return Promise.reject(e);
+    }
   }
 
   /* ------------------------------------------------------------------ */
   /* 图片：压缩 → 加密 → 传到中转附件 → 消息里只带链接                     */
   /* ------------------------------------------------------------------ */
 
-  var IMG_MAX_SIDE = 1600;
-  var IMG_QUALITY = 0.85;
+  var IMG_MAX_SIDE = 1400;
+  var IMG_QUALITY = 0.75;
 
   function compressImage(file) {
     return new Promise(function (resolve, reject) {
@@ -1408,48 +1472,28 @@
     });
   }
 
-  function uploadAttachment(bytes) {
-    // 图片传到单独的 -f 主题，避免在聊天流里插一条“附件消息”
-    return fetch(BASE + '/' + encodeURIComponent(S.topic + '-f'), {
-      method: 'POST',
-      body: bytes,
-      headers: {
-        'Filename': uid() + '.bin',
-        'Content-Type': 'application/octet-stream'
-      },
-      cache: 'no-store'
-    }).then(function (res) {
-      if (!res.ok) throw new Error('上传失败 HTTP ' + res.status);
-      return res.json();
-    }).then(function (json) {
-      if (!json || !json.attachment || !json.attachment.url) throw new Error('中转没有返回图片地址');
-      return json.attachment.url;
-    });
-  }
-
   function loadImageInto(msg, img, bubble) {
     var hint = document.createElement('div');
     hint.className = 'imghint';
     hint.textContent = '图片加载中…';
     bubble.appendChild(hint);
 
-    fetch(msg.u, { cache: 'force-cache' })
-      .then(function (res) {
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        return res.arrayBuffer();
-      })
-      .then(function (buf) {
-        return window.crypto.subtle.decrypt({ name: 'AES-GCM', iv: fromB64(msg.iv) }, S.key, buf);
-      })
-      .then(function (pt) {
-        var blob = new Blob([pt], { type: 'image/jpeg' });
-        img.src = URL.createObjectURL(blob);
-        if (hint.parentNode) hint.parentNode.removeChild(hint);
-      })
-      .catch(function () {
-        hint.textContent = '图片已过期或加载失败';
-        hint.classList.add('bad');
-      });
+    try {
+      var bin = fromB64(msg.d);
+      window.crypto.subtle.decrypt({ name: 'AES-GCM', iv: fromB64(msg.iv) }, S.key, bin)
+        .then(function (pt) {
+          var blob = new Blob([pt], { type: 'image/jpeg' });
+          img.src = URL.createObjectURL(blob);
+          if (hint.parentNode) hint.parentNode.removeChild(hint);
+        })
+        .catch(function () {
+          hint.textContent = '图片解密失败';
+          hint.classList.add('bad');
+        });
+    } catch (e) {
+      hint.textContent = '图片数据损坏';
+      hint.classList.add('bad');
+    }
   }
 
   function sendImage(file) {
@@ -1459,37 +1503,33 @@
       toast('当前浏览器环境不支持加密，不能发图片');
       return Promise.resolve(false);
     }
-    if (file.size > 15 * 1024 * 1024) { toast('图片太大了（上限 15MB）'); return Promise.resolve(false); }
+    if (file.size > 10 * 1024 * 1024) { toast('图片太大了（上限 10MB）'); return Promise.resolve(false); }
 
-    var localUrl = null;
     toast('正在处理图片…');
 
     return compressImage(file).then(function (res) {
-      if (res.blob.size > 8 * 1024 * 1024) throw new Error('压缩后仍然太大');
+      if (res.blob.size > 350 * 1024) throw new Error('压缩后仍然太大，换一张小一点的');
       return res.blob.arrayBuffer().then(function (buf) {
         return encryptBytes(buf).then(function (enc) {
-          return uploadAttachment(enc.data).then(function (url) {
-            return { url: url, iv: enc.iv, w: res.w, h: res.h };
+          var b64 = toB64(enc.data);
+          if (b64.length > 520 * 1024) throw new Error('图片太大，换一张小一点的');
+          var localUrl = URL.createObjectURL(res.blob);
+          var msg = {
+            v: 1, id: uid(), n: S.nick, ts: Date.now(), me: 1,
+            k: 'img', d: b64, iv: enc.iv, w: res.w, h: res.h
+          };
+          S.seen[msg.id] = 1;
+          renderMessage({ id: msg.id, n: msg.n, ts: msg.ts, k: 'img', d: b64, iv: msg.iv, w: msg.w, h: msg.h, local: localUrl }, true, true);
+          pushHist(msg);
+          scrollDown(true);
+          resetJump();
+          return seal(S.key, msg).then(publish).then(function () {
+            toast('图片已发送');
+            return true;
           });
         });
       });
-    }).then(function (info) {
-      localUrl = URL.createObjectURL(file);
-      var msg = {
-        v: 1, id: uid(), n: S.nick, ts: Date.now(), me: 1,
-        k: 'img', u: info.url, iv: info.iv, w: info.w, h: info.h
-      };
-      S.seen[msg.id] = 1;
-      renderMessage({ id: msg.id, n: msg.n, ts: msg.ts, k: 'img', u: msg.u, iv: msg.iv, w: msg.w, h: msg.h, local: localUrl }, true, true);
-      pushHist(msg);
-      scrollDown(true);
-      resetJump();
-      return seal(S.key, msg).then(publish).then(function () {
-        toast('图片已发送');
-        return true;
-      });
     }).catch(function (err) {
-      if (localUrl) { try { URL.revokeObjectURL(localUrl); } catch (e) { /* ignore */ } }
       toast('图片发送失败：' + String((err && err.message) || err));
       return false;
     });
@@ -1518,7 +1558,6 @@
     return seal(S.key, env)
       .then(publish)
       .then(function () {
-        if (S.mode === 'sse' && S.es && S.es.readyState === 1) setStatus('online', '已连接');
         return true;
       })
       .catch(function (err) {
@@ -1531,11 +1570,9 @@
   // 把失败原因说得具体一点，方便定位
   function describeSendError(err) {
     var m = String((err && err.message) || err || '');
-    if (m.indexOf('429') >= 0) return '发送被中转限流了（429），等 10 秒后再点消息重试';
-    if (m.indexOf('413') >= 0) return '消息太长（413），发短一点';
-    if (m.indexOf('401') >= 0 || m.indexOf('403') >= 0) return '中转拒绝了这次发送（' + m + '）';
-    if (m.indexOf('HTTP') >= 0) return '发送失败（' + m + '），点消息可重试';
-    return '发送失败（网络异常），点消息可重试';
+    if (m.indexOf('尚未连接') >= 0) return '还没连上服务器，点消息可重试';
+    if (m.indexOf('消息太大') >= 0) return '消息太大，发短一点';
+    return '发送失败（' + (m || '未知原因') + '），点消息可重试';
   }
 
   function markFailed(id) {
@@ -1598,13 +1635,13 @@
     S.room = room;
     S.topic = topicFor(room);
     S.startedAt = Date.now();
-    S.cursor = '';
     S.seen = Object.create(null);
     S.entered = true;
     S.retry = 0;
     S.lastSender = '';
     S.lastTs = 0;
-    S.lastBeat = 0;
+    S.lastRx = 0;
+    S.mqttReady = false;
     S.unread = 0;
     S.pending = 0;
     S.peerReadTs = 0;
@@ -1659,14 +1696,9 @@
         scrollDown();
       }
 
-      // 补收离线期间的消息：从中转缓存里往回捞（最多 12 小时，清空过就从清空时间起算）
-      var clearedAt = 0;
-      try { clearedAt = Number(localStorage.getItem('ql.clear.' + S.topic)) || 0; } catch (e) { clearedAt = 0; }
-      var lastTs = S.hist.length ? (S.hist[S.hist.length - 1].ts || 0) : 0;
-      var floorTs = Math.max(Date.now() - 12 * 3600 * 1000, clearedAt, lastTs - 120000);
-      S.catchupSince = Math.floor(Math.min(floorTs, Date.now()) / 1000);
+      // 已有记录的 id 先标记为“见过”，避免自己发的消息被重复渲染
       for (var j = 0; j < S.hist.length; j++) {
-        if (S.hist[j].id) S.seen[S.hist[j].id] = 1;      // 已有的不重复渲染
+        if (S.hist[j].id) S.seen[S.hist[j].id] = 1;
       }
 
       if (!HAS_CRYPTO) toast('浏览器不支持加密，消息将以明文发送');
@@ -1680,7 +1712,6 @@
   function leave() {
     S.entered = false;
     teardown();
-    S.es = null;
     setStatus('offline', '已退出');
     clearQuote();
     $('menu').classList.add('is-hidden');
@@ -1920,12 +1951,11 @@
       });
     });
 
-    $('modeBtn').addEventListener('click', function () {
-      S.mode = S.mode === 'sse' ? 'poll' : 'sse';
-      $('modeBtn').textContent = S.mode === 'sse' ? '实时' : '兼容';
-      $('modeBtn').title = S.mode === 'sse' ? '当前为实时推送，点击可切换兼容模式' : '当前为每 3 秒拉取，点击可切回实时推送';
-      toast(S.mode === 'sse' ? '已切换为实时推送' : '已切换为兼容模式（网络受限时更稳）');
-      if (S.entered) connect();
+    $('reconnectBtn').addEventListener('click', function () {
+      if (!S.entered) return;
+      S.retry = 0;
+      connect();
+      toast('正在重新连接…');
     });
 
     $('leaveBtn').addEventListener('click', function () {
@@ -2081,8 +2111,6 @@
     } else if (q.get('room')) {
       $('nickInput').focus();
     }
-
-    if (S.mode === 'sse') $('modeBtn').textContent = '实时';
 
     // 窄屏用短提示，避免 placeholder 换行被裁掉
     var fitPlaceholder = function () {
