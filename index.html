@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
-<title>轻聊 · 极简网页聊天</title>
+<title>QINGLIAO</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%235b5bd6'/%3E%3Cpath d='M18 22h28v16H30l-8 7v-7h-4z' fill='white'/%3E%3C/svg%3E">
 <style>
   :root{
@@ -297,7 +297,7 @@
         <path d="M21 11.6c0 4.6-4 8.3-9 8.3-.9 0-1.8-.1-2.6-.4L3.4 21l1.5-4.4A8 8 0 0 1 3 11.6c0-4.6 4-8.3 9-8.3s9 3.7 9 8.3Z" fill="#fff"/>
       </svg>
     </div>
-    <h1>轻聊</h1>
+    <h1>QINGLIAO</h1>
     <p class="lead">不用注册、不用装软件。你和对方打开同一个网页、填同一个「房间口令」，就能实时收到对方的消息。</p>
     <form id="joinForm" autocomplete="off">
       <label class="field">
@@ -410,7 +410,8 @@
 (function () {
   'use strict';
 
-  var VERSION = '3.1.2';
+  var VERSION = '3.1.3';
+  var APP_NAME = 'QINGLIAO';
   var MQTT_URL = 'wss://broker-cn.emqx.io:8084/mqtt';   // EMQX 国内公共节点
   var MAX_LEN = 800;
   var HIST_MAX = 300;
@@ -650,7 +651,7 @@
     if (!P.notify) return;
     try {
       if (!('Notification' in window) || Notification.permission !== 'granted') return;
-      var n = new Notification(String(msg.n || '对方') + ' · 轻聊', {
+      var n = new Notification(String(msg.n || '对方') + ' · ' + APP_NAME, {
         body: msg.k === 'img' ? '[图片]' : String(msg.t).slice(0, 120),
         tag: msg.id,
         silent: true
@@ -1153,7 +1154,7 @@
   }
 
   function updateTitle() {
-    document.title = S.unread ? '(' + S.unread + ') 轻聊 · 极简网页聊天' : '轻聊 · 极简网页聊天';
+    document.title = S.unread ? '(' + S.unread + ') ' + APP_NAME : APP_NAME;
     setFavicon(S.unread > 0);
   }
 
@@ -1924,9 +1925,9 @@
   function inviteText() {
     var here = location.href.split('#')[0].split('?')[0];
     if (/^https?:/i.test(here)) {
-      return '来「轻聊」和我聊天：\n' + here + '\n房间口令：' + S.room + '\n（打开后填个昵称就能进）';
+      return '来「' + APP_NAME + '」和我聊天：\n' + here + '\n房间口令：' + S.room + '\n（打开后填个昵称就能进）';
     }
-    return '来「轻聊」和我聊天：\n打开我发给你的 qingliao-chat.html\n房间口令：' + S.room + '\n（填个昵称就能进）';
+    return '来「' + APP_NAME + '」和我聊天：\n打开我发给你的 qingliao-chat.html\n房间口令：' + S.room + '\n（填个昵称就能进）';
   }
 
   /* ------------------------------------------------------------------ */
