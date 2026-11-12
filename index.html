@@ -410,7 +410,7 @@
 (function () {
   'use strict';
 
-  var VERSION = '3.0.0';
+  var VERSION = '3.1.0';
   var MQTT_URL = 'wss://broker-cn.emqx.io:8084/mqtt';   // EMQX 国内公共节点
   var MAX_LEN = 800;
   var HIST_MAX = 300;
@@ -583,7 +583,22 @@
   };
 
   S.clientId = uid();     // 本页面的身份，用来忽略自己消息的回声
-  var MQTT_CLIENT_ID = 'ql' + Math.random().toString(36).slice(2, 12);
+  var MQTT_CLIENT_ID = '';
+
+  // 持久会话要靠固定 clientId：每个浏览器每个房间一个，存在本地
+  function ensureMqttId() {
+    var key = 'ql.mqid.' + S.topic;
+    try {
+      var v = localStorage.getItem(key);
+      if (!v) {
+        v = 'ql' + Math.random().toString(36).slice(2, 12);
+        localStorage.setItem(key, v);
+      }
+      return v;
+    } catch (e) {
+      return 'ql' + Math.random().toString(36).slice(2, 12);
+    }
+  }
 
   // 本地偏好：消息提醒 / 提示音
   var P = { notify: false, sound: false };
@@ -1086,13 +1101,6 @@
   /* 未读计数 + 迷你窗口                                                 */
   /* ------------------------------------------------------------------ */
 
-  var MINI_CSS = [
-    'html,body{margin:0;height:100%;overflow:hidden;background:#111318;}',
-    'body{display:flex;align-items:center;justify-content:center;cursor:pointer;user-select:none;}',
-    '.dot{width:13px;height:13px;border-radius:50%;background:#3b4050;transition:background .15s,box-shadow .15s;}',
-    '.dot.hot{background:#ff453a;box-shadow:0 0 0 4px rgba(255,69,58,.16);}'
-  ].join('');
-
   var pipWin = null;
   var faviconOn = null;
   var faviconOff = null;
@@ -1151,10 +1159,15 @@
 
   function renderMini() {
     if (!pipWin || pipWin.closed) return;
-    var doc = pipWin.document;
-    var dot = doc.getElementById('miniDot');
+    var dot = pipWin.document.getElementById('miniDot');
     if (!dot) return;
-    dot.className = S.unread > 0 ? 'dot hot' : 'dot';
+    if (S.unread > 0) {
+      dot.style.background = '#ff453a';
+      dot.style.boxShadow = '0 0 0 4px rgba(255,69,58,.16)';
+    } else {
+      dot.style.background = '#3b4050';
+      dot.style.boxShadow = 'none';
+    }
   }
 
   function bumpUnread() {
@@ -1194,6 +1207,57 @@
     }
   }
 
+  // 把圆点放到「窗口真正露在屏幕上的那块区域」的中心：
+  // 窗口被拖到屏幕边缘、只露出一半时，点会跟着移到可见部分
+  function positionMiniDot() {
+    if (!pipWin || pipWin.closed) return;
+    var win = pipWin;
+    var dot = win.document.getElementById('miniDot');
+    if (!dot) return;
+
+    var iw = win.innerWidth || 0;
+    var ih = win.innerHeight || 0;
+    if (!iw || !ih) return;
+
+    var cx = iw / 2;
+    var cy = ih / 2;
+
+    var sx = win.screenX;
+    var sy = win.screenY;
+    var scr = win.screen;
+
+    if (typeof sx === 'number' && typeof sy === 'number' && scr) {
+      var ow = win.outerWidth || iw;
+      var oh = win.outerHeight || ih;
+      var frameX = Math.max(0, (ow - iw) / 2);
+      var frameTop = Math.max(0, oh - ih - frameX);
+      var contentX = sx + frameX;
+      var contentY = sy + frameTop;
+
+      var availLeft = (typeof scr.availLeft === 'number') ? scr.availLeft : 0;
+      var availTop = (typeof scr.availTop === 'number') ? scr.availTop : 0;
+      var availW = scr.availWidth || scr.width || iw;
+      var availH = scr.availHeight || scr.height || ih;
+      var scrRight = availLeft + availW;
+      var scrBottom = availTop + availH;
+
+      var visLeft = Math.max(0, availLeft - contentX);
+      var visRight = Math.min(iw, scrRight - contentX);
+      var visTop = Math.max(0, availTop - contentY);
+      var visBottom = Math.min(ih, scrBottom - contentY);
+
+      if (visRight > visLeft) cx = (visLeft + visRight) / 2;
+      if (visBottom > visTop) cy = (visTop + visBottom) / 2;
+    }
+
+    // 留一点边距，别贴死在边线上
+    cx = Math.min(Math.max(cx, 9), Math.max(9, iw - 9));
+    cy = Math.min(Math.max(cy, 9), Math.max(9, ih - 9));
+
+    dot.style.left = Math.round(cx) + 'px';
+    dot.style.top = Math.round(cy) + 'px';
+  }
+
   function toggleMini() {
     var supported = 'documentPictureInPicture' in window;
     if (!supported) {
@@ -1209,20 +1273,34 @@
       $('miniItem').setAttribute('aria-checked', 'true');
       try { win.document.title = '·'; } catch (e) { /* ignore */ }
 
-      var style = win.document.createElement('style');
-      style.textContent = MINI_CSS;
-      win.document.head.appendChild(style);
+      // 全部用内联样式：不依赖样式表是否注入成功，窗口拖动/缩放时始终居中
+      var doc = win.document;
+      if (doc.documentElement) {
+        doc.documentElement.style.cssText = 'margin:0;padding:0;height:100%;overflow:hidden;background:#111318;';
+      }
+      if (doc.body) {
+        doc.body.style.cssText = 'margin:0;padding:0;height:100%;overflow:hidden;background:#111318;';
+      }
 
-      var dot = win.document.createElement('div');
-      dot.className = 'dot';
+      var wrap = doc.createElement('div');
+      wrap.id = 'miniWrap';
+      wrap.style.cssText = 'position:fixed;left:0;top:0;right:0;bottom:0;background:#111318;cursor:pointer;-webkit-user-select:none;user-select:none;overflow:hidden;';
+      var dot = doc.createElement('div');
       dot.id = 'miniDot';
-      win.document.body.appendChild(dot);
+      dot.style.cssText = 'position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:13px;height:13px;border-radius:50%;background:#3b4050;transition:background .15s,box-shadow .15s;';
+      wrap.appendChild(dot);
+      doc.body.appendChild(wrap);
 
-      win.document.body.addEventListener('click', function () {
+      wrap.addEventListener('click', function () {
         clearUnread();
         try { window.focus(); } catch (e) { /* ignore */ }
       });
+
+      positionMiniDot();
+      var posTimer = win.setInterval(positionMiniDot, 200);
+
       win.addEventListener('pagehide', function () {
+        try { win.clearInterval(posTimer); } catch (e) { /* ignore */ }
         pipWin = null;
         $('miniItem').setAttribute('aria-checked', 'false');
       });
@@ -1260,23 +1338,34 @@
     return out;
   }
 
+  // cleanSession = 0（0x00）：让 broker 保留会话，离线期间的消息排队
   function connectPacket(clientId) {
-    var head = [0x00, 0x04, 0x4d, 0x51, 0x54, 0x54, 0x04, 0x02, 0x00, 0x3c];
+    var head = [0x00, 0x04, 0x4d, 0x51, 0x54, 0x54, 0x04, 0x00, 0x00, 0x3c];
     var payload = Array.prototype.slice.call(mqttStr(clientId));
     var body = head.concat(payload);
     return new Uint8Array([0x10].concat(encLen(body.length), body));
   }
 
+  // 订阅用 QoS 1，broker 才会给离线会话排队
   function subscribePacket(id, topic) {
     var t = Array.prototype.slice.call(mqttStr(topic));
-    var body = [(id >> 8) & 0xff, id & 0xff].concat(t, [0x00]);
+    var body = [(id >> 8) & 0xff, id & 0xff].concat(t, [0x01]);
     return new Uint8Array([0x82].concat(encLen(body.length), body));
   }
 
+  var pktSeq = 0;
+  function nextPktId() {
+    pktSeq = (pktSeq % 65535) + 1;
+    return pktSeq;
+  }
+
+  // 发布也用 QoS 1（min(发布QoS, 订阅QoS) 才是入队保证）
   function publishPacket(topic, payload) {
+    var id = nextPktId();
     var body = Array.prototype.slice.call(mqttStr(topic))
+      .concat([(id >> 8) & 0xff, id & 0xff])
       .concat(Array.prototype.slice.call(new TextEncoder().encode(payload)));
-    return new Uint8Array([0x30].concat(encLen(body.length), body));
+    return new Uint8Array([0x32].concat(encLen(body.length), body));
   }
 
   var PINGREQ = new Uint8Array([0xc0, 0x00]);
@@ -1371,6 +1460,7 @@
       var total = r.next + r.value;
       if (mqttBuf.length < total) return;
       var type = mqttBuf[0] >> 4;
+      var flags = mqttBuf[0] & 0x0f;
       var pkt = mqttBuf.slice(r.next, total);
       mqttBuf = mqttBuf.slice(total);
 
@@ -1388,9 +1478,21 @@
         S.retry = 0;
         setStatus('online', '已连接');
       } else if (type === 3) {                // PUBLISH
+        var qos = (flags & 0x06) >> 1;
         var tl = (pkt[0] << 8) | pkt[1];
-        var payload = new TextDecoder().decode(pkt.slice(2 + tl));
+        var pos = 2 + tl;
+        var pid = 0;
+        if (qos > 0) {
+          pid = (pkt[pos] << 8) | pkt[pos + 1];
+          pos += 2;
+        }
+        var payload = new TextDecoder().decode(pkt.slice(pos));
+        if (qos === 1 && pid) {
+          try { ws.send(new Uint8Array([0x40, 0x02, (pid >> 8) & 0xff, pid & 0xff])); } catch (e) { /* ignore */ }
+        }
         if (payload) handleRaw(payload);
+      } else if (type === 4) {                // PUBACK（我们发出的 QoS1 已确认）
+        S.lastRx = Date.now();
       } else if (type === 13) {               // PINGRESP
         S.lastRx = Date.now();
       }
@@ -1634,6 +1736,7 @@
     S.nick = nick;
     S.room = room;
     S.topic = topicFor(room);
+    MQTT_CLIENT_ID = ensureMqttId();
     S.startedAt = Date.now();
     S.seen = Object.create(null);
     S.entered = true;
