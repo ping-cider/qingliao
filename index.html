@@ -410,7 +410,7 @@
 (function () {
   'use strict';
 
-  var VERSION = '3.1.1';
+  var VERSION = '3.1.2';
   var MQTT_URL = 'wss://broker-cn.emqx.io:8084/mqtt';   // EMQX 国内公共节点
   var MAX_LEN = 800;
   var HIST_MAX = 300;
@@ -1162,17 +1162,20 @@
     var doc = pipWin.document;
     var dot = doc.getElementById('miniDot');
     var ring = doc.getElementById('miniRing');
+    var edge = doc.getElementById('miniEdge');
     if (!dot) return;
     if (S.unread > 0) {
       dot.style.background = '#f2b01e';
       dot.style.boxShadow = '0 0 0 5px rgba(242,176,30,.14)';
       dot.className = 'on';
       if (ring) ring.className = 'on';
+      if (edge) edge.className = 'on';
     } else {
       dot.style.background = '#3b4050';
       dot.style.boxShadow = 'none';
       dot.className = '';
       if (ring) ring.className = '';
+      if (edge) edge.className = '';
     }
   }
 
@@ -1305,17 +1308,26 @@
       dot.id = 'miniDot';
       dot.style.cssText = 'position:absolute;left:-7px;top:-7px;width:14px;height:14px;border-radius:50%;background:#3b4050;transition:background .2s,box-shadow .2s;';
 
+      // 贴着内容区四边的发光层（窗口自身的边框改不了，这层是画在里面的）
+      var edge = doc.createElement('div');
+      edge.id = 'miniEdge';
+      edge.style.cssText = 'position:absolute;left:0;top:0;right:0;bottom:0;pointer-events:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,0);transition:box-shadow .2s;';
+
       anchor.appendChild(ring);
       anchor.appendChild(dot);
       wrap.appendChild(anchor);
+      wrap.appendChild(edge);
       doc.body.appendChild(wrap);
 
       var style = doc.createElement('style');
       style.textContent =
         '@keyframes qlBreathe{0%,100%{transform:scale(1)}50%{transform:scale(1.18)}}' +
         '@keyframes qlRipple{0%{transform:scale(1);opacity:.75}100%{transform:scale(2.7);opacity:0}}' +
+        '@keyframes qlEdge{0%,100%{box-shadow:inset 0 0 0 2px rgba(242,176,30,.28),inset 0 0 14px rgba(242,176,30,.10)}' +
+        '50%{box-shadow:inset 0 0 0 3px rgba(242,176,30,.95),inset 0 0 22px rgba(242,176,30,.28)}}' +
         '#miniDot.on{animation:qlBreathe 2s ease-in-out infinite}' +
-        '#miniRing.on{animation:qlRipple 2s ease-out infinite}';
+        '#miniRing.on{animation:qlRipple 2s ease-out infinite}' +
+        '#miniEdge.on{animation:qlEdge 2s ease-in-out infinite}';
       (doc.head || doc.documentElement).appendChild(style);
 
       wrap.addEventListener('click', function () {
