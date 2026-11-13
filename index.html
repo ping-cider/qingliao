@@ -114,7 +114,7 @@
     border:1px solid hsl(var(--av-h, 212), 40%, 88%);
   }
   .msg.cont .ava{visibility:hidden}
-  .body{display:flex;flex-direction:column;max-width:min(72%,520px);min-width:0}
+  .body{display:flex;flex-direction:column;max-width:min(72%,520px);min-width:0;position:relative}
   .msg.own .body{align-items:flex-end}
   .name{font-size:11.5px;color:#8f8f8f;margin:0 3px 5px}
   .bubble{
@@ -138,12 +138,27 @@
 
   .foot{display:flex;align-items:center;gap:8px;margin:0;min-height:0}
   .msg.own .foot{flex-direction:row-reverse}
-  .tools{display:none;gap:6px}
-  .msg.show-tools .tools{display:flex}
-  @media (hover:hover){ .msg:hover .tools{display:flex} }
-  .tool{background:#e8e8e8;color:#555;font-size:11px;padding:1px 7px;border-radius:3px;line-height:1.5}
-  .tool:hover{background:#dcdcdc;color:#1a1a1a}
-  .tool-time{font-size:10.5px;color:#b3b3b3;line-height:1.5;white-space:nowrap;user-select:none;-webkit-user-select:none;cursor:default}
+  .hover-time{
+    position:absolute;top:50%;left:100%;margin-left:8px;transform:translateY(-50%);
+    font-size:10.5px;color:#b3b3b3;white-space:nowrap;user-select:none;-webkit-user-select:none;
+    opacity:0;pointer-events:none;transition:opacity .15s ease;
+  }
+  .msg.own .hover-time{left:auto;right:100%;margin-right:8px;margin-left:0}
+  @media (hover:hover){ .msg:hover .hover-time{opacity:1} }
+  @media (hover:none){
+    .hover-time{display:none}
+    .bubble{-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
+  }
+
+  .ctxmenu{
+    position:fixed;z-index:95;min-width:132px;padding:4px;
+    background:#fff;border:1px solid #e2e2e2;border-radius:6px;
+    box-shadow:0 8px 28px rgba(0,0,0,.16);
+  }
+  .cm-time{display:block;font-size:10.5px;color:#b3b3b3;padding:4px 9px 6px;border-bottom:1px solid #f0f0f0;margin-bottom:3px;user-select:none;-webkit-user-select:none}
+  .cm-item{display:block;width:100%;text-align:left;background:transparent;border:0;font:inherit;font-size:13px;color:#1a1a1a;padding:7px 10px;border-radius:4px;cursor:pointer}
+  .cm-item:hover{background:#f2f2f2}
+  .cm-item.danger{color:#e64340}
 
   .quote{border-left:2px solid rgba(0,0,0,.15);padding:2px 0 2px 7px;margin:0 0 5px;font-size:12.5px;line-height:1.45;opacity:.85;cursor:pointer}
   .msg.other .quote{border-left-color:#d4d4d4}
@@ -262,8 +277,11 @@
     #msgInput::placeholder{color:#7d7d7d}
     .composer{background:var(--bar-bg);border-top-color:#2a2a2a}
     .counter{background:#2c2c2c;border-color:#333;color:#7d7d7d}
-    .tool{background:#2c2c2c;color:#b0b0b0}
-    .tool:hover{background:#3a3a3a;color:#fff}
+    .hover-time{color:#6f6f6f}
+    .ctxmenu{background:#2c2c2c;border-color:#3a3a3a;box-shadow:0 8px 28px rgba(0,0,0,.5)}
+    .cm-item{color:#e6e6e6}
+    .cm-item:hover{background:#3a3a3a}
+    .cm-time{color:#7d7d7d;border-bottom-color:#3a3a3a}
     .sys{color:#6f6f6f}
     .empty{color:var(--muted)}
     .menu{background:#2c2c2c;border-color:#3a3a3a;box-shadow:0 6px 24px rgba(0,0,0,.5)}
@@ -390,6 +408,13 @@
 
 <div class="toast is-hidden" id="toast"></div>
 
+<div class="ctxmenu is-hidden" id="ctxMenu">
+  <span class="cm-time" id="cmTime"></span>
+  <button type="button" class="cm-item" id="cmQuote">引用</button>
+  <button type="button" class="cm-item" id="cmCopy">复制</button>
+  <button type="button" class="cm-item danger" id="cmRecall">撤回</button>
+</div>
+
 <div class="modal is-hidden" id="renameModal">
   <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="renameTitle">
     <h3 id="renameTitle">修改昵称</h3>
@@ -407,7 +432,7 @@
 (function () {
   'use strict';
 
-  var VERSION = '3.4.3';
+  var VERSION = '3.5.1';
   var APP_NAME = 'QINGLIAO';
   var MQTT_URL = 'wss://broker-cn.emqx.io:8084/mqtt';
   var MAX_LEN = 800;
@@ -802,46 +827,16 @@
 
       var imgFoot = document.createElement('div');
       imgFoot.className = 'foot';
-      var imgTools = document.createElement('div');
-      imgTools.className = 'tools';
       var imgTime = document.createElement('span');
-      imgTime.className = 'tool-time';
+      imgTime.className = 'hover-time';
       imgTime.textContent = fmtTime(msg.ts);
-      imgTools.appendChild(imgTime);
-      var qb = document.createElement('button');
-      qb.type = 'button';
-      qb.className = 'tool';
-      qb.textContent = '引用';
-      qb.addEventListener('click', function (ev) {
-        ev.stopPropagation();
-        startQuote(msg);
-        wrap.classList.remove('show-tools');
-      });
-      imgTools.appendChild(qb);
-      if (own) {
-        var qr = document.createElement('button');
-        qr.type = 'button';
-        qr.className = 'tool';
-        qr.textContent = '撤回';
-        qr.addEventListener('click', function (ev) {
-          ev.stopPropagation();
-          recallMessage(msg);
-          wrap.classList.remove('show-tools');
-        });
-        imgTools.appendChild(qr);
-      }
-      imgFoot.appendChild(imgTools);
+      body.appendChild(imgTime);
       body.appendChild(imgFoot);
-
-      bubble.addEventListener('click', function (ev) {
-        ev.stopPropagation();
-        var open = $('log').querySelector('.msg.show-tools');
-        if (open && open !== wrap) open.classList.remove('show-tools');
-        wrap.classList.toggle('show-tools');
-      });
 
       wrap.appendChild(ava);
       wrap.appendChild(body);
+      wrap.__msg = msg;
+      msg.__own = own;
       $('log').appendChild(wrap);
       S.lastSender = key;
       S.lastTs = msg.ts || Date.now();
@@ -871,63 +866,30 @@
     bubble.appendChild(document.createTextNode(msg.t));
     body.appendChild(bubble);
 
-    var foot = document.createElement('div');
-    foot.className = 'foot';
-
-    var tools = document.createElement('div');
-    tools.className = 'tools';
-    var timeEl = document.createElement('span');
-    timeEl.className = 'tool-time';
-    timeEl.textContent = fmtTime(msg.ts);
-    tools.appendChild(timeEl);
-
-    var btnQuote = document.createElement('button');
-    btnQuote.type = 'button';
-    btnQuote.className = 'tool';
-    btnQuote.textContent = '引用';
-    btnQuote.addEventListener('click', function (ev) {
+    bubble.addEventListener('dblclick', function (ev) {
       ev.stopPropagation();
-      startQuote(msg);
-      wrap.classList.remove('show-tools');
-    });
-    var btnCopy = document.createElement('button');
-    btnCopy.type = 'button';
-    btnCopy.className = 'tool';
-    btnCopy.textContent = '复制';
-    btnCopy.addEventListener('click', function (ev) {
-      ev.stopPropagation();
-      copyText(msg.t).then(function (ok) {
+      var sel = window.getSelection ? window.getSelection() : null;
+      if (sel && sel.removeAllRanges) {
+        try { sel.removeAllRanges(); } catch (e) { /* ignore */ }
+      }
+      copyText(String(msg.t || '')).then(function (ok) {
         toast(ok ? '已复制这条消息' : '复制失败，请手动选中');
       });
-      wrap.classList.remove('show-tools');
     });
-    tools.appendChild(btnQuote);
-    tools.appendChild(btnCopy);
-    if (own) {
-      var btnRecall = document.createElement('button');
-      btnRecall.type = 'button';
-      btnRecall.className = 'tool';
-      btnRecall.textContent = '撤回';
-      btnRecall.addEventListener('click', function (ev) {
-        ev.stopPropagation();
-        recallMessage(msg);
-        wrap.classList.remove('show-tools');
-      });
-      tools.appendChild(btnRecall);
-    }
-    foot.appendChild(tools);
-    body.appendChild(foot);
 
-    bubble.addEventListener('click', function (ev) {
-      if (wrap.classList.contains('failed')) return;
-      ev.stopPropagation();
-      var open = $('log').querySelector('.msg.show-tools');
-      if (open && open !== wrap) open.classList.remove('show-tools');
-      wrap.classList.toggle('show-tools');
-    });
+    var timeEl = document.createElement('span');
+    timeEl.className = 'hover-time';
+    timeEl.textContent = fmtTime(msg.ts);
+    body.appendChild(timeEl);
+
+    var foot = document.createElement('div');
+    foot.className = 'foot';
+    body.appendChild(foot);
 
     wrap.appendChild(ava);
     wrap.appendChild(body);
+    wrap.__msg = msg;
+    msg.__own = own;
     $('log').appendChild(wrap);
     S.lastSender = key;
     S.lastTs = msg.ts || Date.now();
@@ -1012,6 +974,29 @@
     } else {
       toast('已撤回');
     }
+  }
+
+  var ctxMsg = null;
+
+  function openCtxMenu(msg, x, y) {
+    var el = $('ctxMenu');
+    if (!el || !msg) return;
+    ctxMsg = msg;
+    $('cmTime').textContent = fmtTime(msg.ts);
+    $('cmCopy').classList.toggle('is-hidden', msg.k === 'img');
+    $('cmRecall').classList.toggle('is-hidden', !msg.__own);
+    el.classList.remove('is-hidden');
+    var rect = el.getBoundingClientRect();
+    var left = Math.min(x, window.innerWidth - rect.width - 8);
+    var top = Math.min(y, window.innerHeight - rect.height - 8);
+    el.style.left = Math.max(8, left) + 'px';
+    el.style.top = Math.max(8, top) + 'px';
+  }
+
+  function closeCtxMenu() {
+    var el = $('ctxMenu');
+    if (el) el.classList.add('is-hidden');
+    ctxMsg = null;
   }
 
   function updateJump() {
@@ -2050,6 +2035,71 @@
     });
     $('log').addEventListener('scroll', function () {
       if (S.pending && nearBottom()) resetJump();
+      closeCtxMenu();
+    });
+
+    $('log').addEventListener('contextmenu', function (ev) {
+      var wrap = ev.target && ev.target.closest ? ev.target.closest('.msg') : null;
+      if (!wrap || !wrap.__msg) return;
+      ev.preventDefault();
+      openCtxMenu(wrap.__msg, ev.clientX, ev.clientY);
+    });
+
+    var lpTimer = null;
+    var lpStart = null;
+    var lpFired = false;
+
+    $('log').addEventListener('touchstart', function (ev) {
+      if (!ev.touches || ev.touches.length !== 1) return;
+      var wrap = ev.target && ev.target.closest ? ev.target.closest('.msg') : null;
+      if (!wrap || !wrap.__msg) return;
+      lpStart = { x: ev.touches[0].clientX, y: ev.touches[0].clientY };
+      lpFired = false;
+      clearTimeout(lpTimer);
+      lpTimer = setTimeout(function () {
+        lpFired = true;
+        openCtxMenu(wrap.__msg, lpStart.x, lpStart.y);
+        try { if (navigator.vibrate) navigator.vibrate(12); } catch (e) { /* ignore */ }
+      }, 460);
+    }, { passive: true });
+
+    $('log').addEventListener('touchmove', function (ev) {
+      if (!lpStart || !ev.touches || !ev.touches[0]) return;
+      var t = ev.touches[0];
+      if (Math.abs(t.clientX - lpStart.x) > 10 || Math.abs(t.clientY - lpStart.y) > 10) {
+        clearTimeout(lpTimer);
+        lpTimer = null;
+        lpStart = null;
+      }
+    }, { passive: true });
+
+    $('log').addEventListener('touchend', function (ev) {
+      clearTimeout(lpTimer);
+      lpTimer = null;
+      lpStart = null;
+      if (lpFired) {
+        lpFired = false;
+        if (ev.cancelable) ev.preventDefault();
+      }
+    }, { passive: false });
+
+    $('cmQuote').addEventListener('click', function () {
+      var m = ctxMsg;
+      closeCtxMenu();
+      if (m) startQuote(m);
+    });
+    $('cmCopy').addEventListener('click', function () {
+      var m = ctxMsg;
+      closeCtxMenu();
+      if (!m) return;
+      copyText(String(m.t || '')).then(function (ok) {
+        toast(ok ? '已复制这条消息' : '复制失败，请手动选中');
+      });
+    });
+    $('cmRecall').addEventListener('click', function () {
+      var m = ctxMsg;
+      closeCtxMenu();
+      if (m) recallMessage(m);
     });
 
     $('msgInput').addEventListener('input', function () {
@@ -2174,14 +2224,14 @@
         hideMenu();
       }
       toggleEmoji(false);
-      var openMsg = $('log').querySelector('.msg.show-tools');
-      if (openMsg && !openMsg.contains(ev.target)) openMsg.classList.remove('show-tools');
+      closeCtxMenu();
     });
 
     document.addEventListener('keydown', function (ev) {
       if (ev.key === 'Escape') {
         hideMenu();
         closeRename();
+        closeCtxMenu();
         toggleEmoji(false);
         if (S.quote) clearQuote();
       }
