@@ -432,7 +432,7 @@
 (function () {
   'use strict';
 
-  var VERSION = '3.5.1';
+  var VERSION = '3.5.2';
   var APP_NAME = 'QINGLIAO';
   var MQTT_URL = 'wss://broker-cn.emqx.io:8084/mqtt';
   var MAX_LEN = 800;
@@ -865,17 +865,6 @@
 
     bubble.appendChild(document.createTextNode(msg.t));
     body.appendChild(bubble);
-
-    bubble.addEventListener('dblclick', function (ev) {
-      ev.stopPropagation();
-      var sel = window.getSelection ? window.getSelection() : null;
-      if (sel && sel.removeAllRanges) {
-        try { sel.removeAllRanges(); } catch (e) { /* ignore */ }
-      }
-      copyText(String(msg.t || '')).then(function (ok) {
-        toast(ok ? '已复制这条消息' : '复制失败，请手动选中');
-      });
-    });
 
     var timeEl = document.createElement('span');
     timeEl.className = 'hover-time';
